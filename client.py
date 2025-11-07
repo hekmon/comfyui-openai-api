@@ -1,45 +1,59 @@
 from urllib.parse import urlparse
 
-from comfy.comfy_types import IO
 from openai import OpenAI
 
-from .iotypes import OAIAPIIO
+from comfy_api.latest import io
 
-class Client:
-    CATEGORY = "OpenAI API"
-    RETURN_TYPES = (OAIAPIIO.CLIENT,)
-    # RETURN_NAMES = ("Target",)
-    FUNCTION = "create_client"
+from .iotypes import ClientParam
+
+
+class Client(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPIClient",
+            display_name="OpenAI API - Client",
+            category="OpenAI API",
+            inputs=[
+                io.String.Input(
+                    id="base_url",
+                    display_name="Base URL",
+                    tooltip="The base URL to use for the OpenAI API requests",
+                    placeholder="http(s)://host[:port][/URI]",
+                    default="https://api.openai.com/v1"
+                ),
+                io.Int.Input(
+                    id="max_retries",
+                    display_name="Max Retries",
+                    tooltip="The base URL to use for the OpenAI API requests",
+                    default=2,
+                    min=0,
+                ),
+                io.Int.Input(
+                    id="timeout",
+                    display_name="Timeout",
+                    tooltip="Request timeout in seconds",
+                    default=600,
+                    min=1,
+                ),
+                io.String.Input(
+                    id="api_key",
+                    display_name="API Key",
+                    optional=True,
+                    tooltip="The API key to use, if any",
+                ),
+            ],
+            outputs=[
+                ClientParam.Output(
+                    id="client",
+                    display_name="CLIENT",
+                    tooltip="The initialized and ready to query OpenAI API client"
+                )
+            ],
+        )
 
     @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "base_url": (IO.STRING, {
-                    "default": "https://api.openai.com/v1",
-                    "placeholder": "http(s)://host[:port][/URI]",
-                    "tooltip": "The base URL to use for the OpenAI API requests",
-                }),
-                "max_retries": (IO.INT, {
-                    "min": 0,
-                    "default": 2,
-                    "tooltip": "Maximum number of retries on failure"
-                }),
-                "timeout": (IO.INT, {
-                    "min": 1,
-                    "default": 600,
-                    "tooltip": "Request timeout in seconds"
-                }),
-            },
-            "optional": {
-                "api_key": (IO.STRING, {
-                    "tooltip": "The API key to use, if any"
-                })
-            }
-        }
-
-    @classmethod
-    def VALIDATE_INPUTS(cls, base_url):
+    def validate_inputs(cls, base_url) -> bool | str:
         try:
             result = urlparse(base_url)
             if result.scheme not in ["http", "https"]:
@@ -48,10 +62,13 @@ class Client:
             return f"invalid URL: {e}"
         return True
 
-    def create_client(self, base_url, api_key=None, max_retries=2, timeout=600):
-        return (OpenAI(
-            api_key=api_key,
-            base_url=base_url,
-            max_retries=max_retries,
-            timeout=timeout
-        ),)
+    @classmethod
+    def execute(cls, base_url: str, max_retries: int, timeout: int, api_key: str | None = None) -> io.NodeOutput:
+        return io.NodeOutput(
+            OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                max_retries=max_retries,
+                timeout=timeout
+            )
+        )
