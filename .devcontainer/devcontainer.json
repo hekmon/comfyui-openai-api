@@ -1,0 +1,9 @@
+{
+    "name": "ComfyUI-OpenAIAPI",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/ComfyUI/custom_nodes/comfyui-openai-api,type=bind",
+    "workspaceFolder": "/ComfyUI",
+    "updateContentCommand": "pip install -r /ComfyUI/custom_nodes/comfyui-openai-api/requirements.txt"
+}
