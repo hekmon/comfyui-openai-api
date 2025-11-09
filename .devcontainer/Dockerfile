@@ -4,4 +4,4 @@ RUN git clone --single-branch --branch $(git ls-remote --tags --sort="v:refname"
 WORKDIR /ComfyUI
 RUN pip install --upgrade pip
 # Install ComfyUI dependencies
-# RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt
