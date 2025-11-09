@@ -12,4 +12,6 @@ from comfy_api.latest import io
 #     DEBUG = f"{OPTIONS},{HISTORY}"
 
 
-ClientParam = io.Custom("OAIAPI_CLIENT")
+ParamClient = io.Custom("OAIAPI_CLIENT")
+ParamHistory = io.Custom("OAIAPI_HISTORY")
+ParamOptions = io.Custom("OAIAPI_OPTIONS")

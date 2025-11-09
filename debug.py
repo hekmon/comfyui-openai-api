@@ -4,6 +4,7 @@ from comfy.comfy_types import IO
 
 from .iotypes import OAIAPIIO
 
+
 class Debug:
     CATEGORY = "OpenAI API"
     RETURN_TYPES = (IO.STRING,)

@@ -1,77 +1,122 @@
 import base64
-import io
+from io import BytesIO
 
+import torch
 import numpy as np
 from PIL import Image
+from comfy_api.latest import io
+from openai import OpenAI
+from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
+from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
 
-from comfy.comfy_types import IO
+from .iotypes import ParamClient, ParamHistory, ParamOptions
 
-from .iotypes import OAIAPIIO
 
-class ChatCompletion:
-    CATEGORY = "OpenAI API"
-    RETURN_TYPES = (IO.STRING, OAIAPIIO.HISTORY)
-    RETURN_NAMES = ("RESPONSE", "HISTORY")
-    FUNCTION = "generate"
+def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
+    # Taken from the SaveImage ComfyUI node, convert the tensor into a regular image
+    i = np.multiply(255., image.cpu().numpy())
+    img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+    # Encode the image as PNG in base64 format
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    b64_png = base64.b64encode(buffer.getvalue())
+    # Return the formated string URL
+    return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+class ChatCompletion(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPIChatCompletion",
+            display_name="OpenAI API - Chat Completion",
+            category="OpenAI API",
+            inputs=[
+                ParamClient.Input(
+                    id="client",
+                    display_name="Client",
+                    tooltip="The OpenAI API client to use to perform the request"
+                ),
+                io.String.Input(
+                    id="model",
+                    display_name="Model",
+                    tooltip="The model to use for generating text",
+                    placeholder="Model name",
+                ),
+                io.String.Input(
+                    id="prompt",
+                    display_name="Prompt",
+                    tooltip="The prompt to use for generating text",
+                    multiline=True,
+                    placeholder="user prompt is mandatory",
+                ),
+                io.String.Input(
+                    id="system_prompt",
+                    display_name="System Prompt",
+                    optional=True,
+                    tooltip="The system prompt to send along with the user prompt",
+                    multiline=True,
+                    placeholder="system/developer prompt is optional",
+                ),
+                ParamHistory.Input(
+                    id="history",
+                    display_name="History",
+                    optional=True,
+                    tooltip="Previous conversation history",
+                ),
+                ParamOptions.Input(
+                    id="options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Additional options to pass with the request",
+                ),
+                io.Image.Input(
+                    id="images",
+                    display_name="image(s)",
+                    optional=True,
+                    tooltip="Image(s) to include in the request",
+                ),
+            ],
+            outputs=[
+                io.String.Output(
+                    id="response",
+                    display_name="Response",
+                    tooltip="Generated text response",
+                ),
+                ParamHistory.Output(
+                    id="history",
+                    display_name="History",
+                    tooltip="Conversation history",
+                ),
+            ],
+        )
 
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "client": (OAIAPIIO.CLIENT,),
-                "model": (IO.STRING, {
-                    "placeholder": "Model name",
-                    "tooltip": "The model to use for generating text",
-                }),
-                "prompt": (IO.STRING, {
-                    "placeholder": "user prompt is mandatory",
-                    "tooltip": "The user prompt to send to the OpenAI API",
-                    "multiline": True,
-                }),
-            },
-            "optional": {
-                "system_prompt": (IO.STRING, {
-                    "placeholder": "system/seveloper prompt is optional",
-                    "tooltip": "The system prompt to send along with the user prompt",
-                    "multiline": True,
-                }),
-                "history": (OAIAPIIO.HISTORY, {
-                    "default": None,
-                    "tooltip": "Chat completions history to send to the OpenAI API. If system prompt is (re)specified it will be overwritten by the new one. If system prompt is not specified, the previous one (if any) will be used.",
-                }),
-                "options": (OAIAPIIO.OPTIONS, {
-                    "default": None,
-                    "tooltip": "Chat completion options. This can be used to specify additional parameters for the chat completion request.",
-                }),
-                "image": (IO.IMAGE, {
-                    "default": None,
-                    "tooltip": "One or multiples images to send along with the prompt. The model must have multi modals capabilities to process images.",
-                })
-            },
-        }
-
-    @classmethod
-    def IS_CHANGED(s, client, model, prompt, system_prompt="", history=None, options=None, image=None):
-        # User might want to regenerate even if we have not changed
-        return float("NaN")
-
-    @classmethod
-    def VALIDATE_INPUTS(cls, model, prompt):
+    def validate_inputs(cls, model, prompt) -> bool | str:
         if model == "":
             return "model must be specified"
         if prompt == "":
             return "prompt must be specified"
         return True
 
-    def generate(self, client, model, prompt, system_prompt=None, history=None, options=None, image=None):
+    @classmethod
+    def execute(cls,
+                client: OpenAI,
+                model: str,
+                prompt: str,
+                system_prompt: str | None = None,
+                history: list[ChatCompletionMessageParam] | None = None,
+                options: dict | None = None,
+                images: torch.Tensor | None = None,
+                ) -> io.NodeOutput:
         # Handle options
-        seed = None
-        temperature = None
-        max_tokens = None
-        top_p = None
-        frequency_penalty = None
-        presence_penalty = None
-        use_developer_role = False
+        seed: int | None = None
+        temperature: float | None = None
+        max_tokens: int | None = None
+        top_p: float | None = None
+        frequency_penalty: float | None = None
+        presence_penalty: float | None = None
+        use_developer_role: bool = False
         if options is not None:
             options = options.copy()
             if "seed" in options:
@@ -96,45 +141,67 @@ class ChatCompletion:
                 use_developer_role = options["use_developer_role"]
                 del options["use_developer_role"]
         # Handle system prompt
-        system_role = "developer" if use_developer_role else "system"
         if history is not None:
             messages = history.copy()
             if system_prompt is not None:
                 # Should we insert it at the beginning or replace the existing system message?
-                if history[0]["role"] == "system" or history[0]["role"] == "developer":
-                    messages[0]["role"] = system_role
-                    messages[0]["content"] = system_prompt
+                first_msg_role = history[0].get('role')
+                if first_msg_role == "system" or first_msg_role == "developer":
+                    # Replace the existing system message
+                    if use_developer_role:
+                        messages[0] = {
+                            "role": "developer",  # need literal for type hint check
+                            "content": system_prompt,
+                        }
+                    else:
+                        messages[0] = {
+                            "role": "system",  # need literal for type hint check
+                            "content": system_prompt,
+                        }
                 else:
-                    messages.insert(0, {
-                        "role": system_role,
+                    # insert a new system/dev message at the begining of the list
+                    if use_developer_role:
+                        messages.insert(0, {
+                            "role": "developer",  # need literal for type hint check
+                            "content": system_prompt,
+                        })
+                    else:
+                        messages.insert(0, {
+                            "role": "system",  # need literal for type hint check
+                            "content": system_prompt,
+                        })
+        else:
+            messages: list[ChatCompletionMessageParam] = []
+            if system_prompt:
+                if use_developer_role:
+                    messages.append({
+                        "role": "developer",  # need literal for type hint check
                         "content": system_prompt,
                     })
-        else:
-            messages = []
-            if system_prompt:
-                messages.append({
-                    "role": system_role,
-                    "content": system_prompt,
-                })
+                else:
+                    messages.append({
+                        "role": "system",  # need literal for type hint check
+                        "content": system_prompt,
+                    })
         # Handle user message
-        if image is not None:
+        if images is not None:
             # Build multi modal content
-            content = []
-            for batch_image in image:
+            content: list[ChatCompletionContentPartParam] = []
+            for image in images:
                 content.append(
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": f"data:image/png;base64,{image_to_base64_png(batch_image)}"
+                            "url": comfy_image_to_base64_png_url(image)
                         }
                     }
                 )
-            content.append(
-                {
-                    "type": "text",
-                    "text": prompt
-                }
-            )
+                content.append(
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                )
             # Add the multi-modal content to the messages list
             messages.append(
                 {
@@ -162,24 +229,15 @@ class ChatCompletion:
             extra_body=options,
             n=1
         )
-        # Return the response and the history
+        # Add the response to the history
         messages.append(
             {
                 "role": completion.choices[0].message.role,
                 "content": completion.choices[0].message.content
             }
         )
-        return (
+        # Return the response and the history
+        return io.NodeOutput(
             completion.choices[0].message.content,
             messages,
         )
-
-
-def image_to_base64_png(image):
-    # Taken from the SaveImage ComfyUI node
-    i = 255. * image.cpu().numpy()
-    img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-    # But we do not want it on disk, but in memory as b64
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')

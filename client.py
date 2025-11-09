@@ -4,7 +4,7 @@ from openai import OpenAI
 
 from comfy_api.latest import io
 
-from .iotypes import ClientParam
+from .iotypes import ParamClient
 
 
 class Client(io.ComfyNode):
@@ -44,7 +44,7 @@ class Client(io.ComfyNode):
                 ),
             ],
             outputs=[
-                ClientParam.Output(
+                ParamClient.Output(
                     id="client",
                     display_name="CLIENT",
                     tooltip="The initialized and ready to query OpenAI API client"
