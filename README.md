@@ -14,7 +14,7 @@ Thanks to its simplicity the project has a low footprint: it only has 1 external
 
 The default `base_url` parameter value targets the official OpenAI API endpoint by default but by changing it, you can also use this project with any OpenAI API compatible servers like Ollama, vLLM, TGI, etc...
 
-Multiples images are supported as long as they fed batched to the chat completion node.
+Multiples images are supported as long as they are fed batched to the chat completion node.
 
 If you want to customize the chat completion, you can chain options to modify the request. Most common options are available as predefined nodes but you can inject any key/value pair using the `Extra body` node.
 
