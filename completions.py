@@ -1,5 +1,7 @@
 import base64
 from io import BytesIO
+import json
+import time
 from typing import Any
 
 import torch
@@ -44,6 +46,12 @@ class ChatCompletion(io.ComfyNode):
                     display_name="Model",
                     tooltip="The model to use for generating text",
                     placeholder="Model name",
+                ),
+                io.Boolean.Input(
+                    id="force_regen",
+                    display_name="Force Regen",
+                    tooltip="Set to true to always request a new text generation even if no widget input values have changed (no cache)",
+                    default=False,
                 ),
                 io.String.Input(
                     id="prompt",
@@ -102,6 +110,16 @@ class ChatCompletion(io.ComfyNode):
         return True
 
     @classmethod
+    def fingerprint_inputs(cls, **kwargs) -> str:
+        if kwargs.get("force_regen"):
+            return str(time.time())  # Use timestamp for always refresh
+        else:
+            # Return a sorted key sorted JSON string of the inputs for fingerprinting
+            # Remove force_regen as it will always be False in this path
+            kwargs.pop("force_regen")
+            return json.dumps(kwargs, sort_keys=True, separators=(',', ':'))
+
+    @classmethod
     def execute(cls,
                 client: OpenAI,
                 model: str,
@@ -110,6 +128,7 @@ class ChatCompletion(io.ComfyNode):
                 history: HistoryPayload | None = None,
                 options: OptionsPayload | None = None,
                 images: list[torch.Tensor] | None = None,
+                force_regen: bool = False,
                 ) -> io.NodeOutput:
         # Handle options
         seed: int | None = None
