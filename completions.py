@@ -32,6 +32,7 @@ class ChatCompletion(io.ComfyNode):
             node_id="OAIAPI_ChatCompletion",
             display_name="OpenAI API - Chat Completion",
             category="OpenAI API",
+            description="Generates text responses using OpenAI's chat completion API. Be sure to indicate a Vision Language Model if you are using an image input.",
             inputs=[
                 ParamClient.Input(
                     id="client",

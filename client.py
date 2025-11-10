@@ -13,6 +13,7 @@ class Client(io.ComfyNode):
             node_id="OAIAPI_Client",
             display_name="OpenAI API - Client",
             category="OpenAI API",
+            description="The OpenAI API client used to perform chat completions",
             inputs=[
                 io.String.Input(
                     id="base_url",
@@ -24,7 +25,7 @@ class Client(io.ComfyNode):
                 io.Int.Input(
                     id="max_retries",
                     display_name="Max Retries",
-                    tooltip="The base URL to use for the OpenAI API requests",
+                    tooltip="Max number of retries for failed requests",
                     default=2,
                     min=0,
                 ),

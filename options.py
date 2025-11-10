@@ -12,11 +12,11 @@ class OptionSeed(io.ComfyNode):
             node_id="OAIAPI_Seed",
             display_name="OpenAI API - Seed",
             category="OpenAI API/Options",
+            description="Sets the seed for reproducible results in OpenAI API requests. Repeated requests with the same seed and parameters will return the same result, allowing for consistent randomness control.",
             inputs=[
                 io.Int.Input(
                     id="seed",
                     display_name="Seed",
-                    tooltip="Repeated requests with the same seed and parameters should return the same result. Control randomness.",
                     default=42,
                     control_after_generate=True,
                     display_mode=io.NumberDisplay.number,
@@ -59,11 +59,12 @@ class OptionTemperature(io.ComfyNode):
             node_id="OAIAPI_Temperature",
             display_name="OpenAI API - Temperature",
             category="OpenAI API/Options",
+            description="Controls the randomness of the generated text. Lower values make the output more deterministic and focused, while higher values introduce more variation and creativity.",
             inputs=[
                 io.Float.Input(
                     id="temperature",
                     display_name="Temperature",
-                    tooltip="Controls randomness in the generated text. Lower values make the output more deterministic.",
+                    tooltip="Number between 0.0 and 2.0. Defaults to 1.0.",
                     default=1.0,
                     min=0.0,
                     max=2.0,
@@ -108,6 +109,7 @@ class OptionMaxTokens(io.ComfyNode):
             node_id="OAIAPI_MaxTokens",
             display_name="OpenAI API - Max Tokens",
             category="OpenAI API/Options",
+            description="Sets the maximum number of tokens that can be generated in the response. This helps control the length and complexity of the output.",
             inputs=[
                 io.Int.Input(
                     id="max_tokens",
@@ -156,11 +158,12 @@ class OptionTopP(io.ComfyNode):
             node_id="OAIAPI_TopP",
             display_name="OpenAI API - Top P",
             category="OpenAI API/Options",
+            description="An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass.",
             inputs=[
                 io.Float.Input(
                     id="top_p",
                     display_name="Top P",
-                    tooltip="An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+                    tooltip="0.1 means only the tokens comprising the top 10% probability mass are considered",
                     default=1.0,
                     min=0.0,
                     max=1.0,
@@ -205,11 +208,12 @@ class OptionFrequencyPenalty(io.ComfyNode):
             node_id="OAIAPI_FrequencyPenalty",
             display_name="OpenAI API - Frequency Penalty",
             category="OpenAI API/Options",
+            description="Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
             inputs=[
                 io.Float.Input(
                     id="frequency_penalty",
                     display_name="Top P",
-                    tooltip="Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+                    tooltip="Number between -2.0 and 2.0",
                     default=0.0,
                     min=-2.0,
                     max=2.0,
@@ -254,11 +258,12 @@ class OptionPresencePenalty(io.ComfyNode):
             node_id="OAIAPI_PresencePenalty",
             display_name="OpenAI API - Presence Penalty",
             category="OpenAI API/Options",
+            description="Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
             inputs=[
                 io.Float.Input(
                     id="presence_penalty",
                     display_name="Top P",
-                    tooltip="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+                    tooltip="Number between -2.0 and 2.0",
                     default=0.0,
                     min=-2.0,
                     max=2.0,
@@ -303,6 +308,7 @@ class OptionExtraBody(io.ComfyNode):
             node_id="OAIAPI_ExtraBody",
             display_name="OpenAI API - Extra Body",
             category="OpenAI API/Options",
+            description="Add extra body parameters to the OpenAI API request. This allows you to include additional parameters that are not covered by other nodes.",
             inputs=[
                 io.String.Input(
                     id="extra_body",
@@ -360,11 +366,12 @@ class OptionDeveloperRole(io.ComfyNode):
             node_id="OAIAPI_DeveloperRole",
             display_name="OpenAI API - Developer Role",
             category="OpenAI API/Options",
+            description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Use this node to adapt the generation with the new 'developer' role.",
             inputs=[
                 io.Boolean.Input(
                     id="use_developer_role",
                     display_name="Instructions Role",
-                    tooltip="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Set this switch to true to set the system prompt as 'developer'.",
+                    tooltip="Set this switch to true to set the system prompt as the 'developer' role instead of the 'system'",
                     default=False,
                     label_on="System",
                     label_off="Developer",
