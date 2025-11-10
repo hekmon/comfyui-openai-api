@@ -10,7 +10,7 @@ class Client(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIClient",
+            node_id="OAIAPI_Client",
             display_name="OpenAI API - Client",
             category="OpenAI API",
             inputs=[
@@ -45,7 +45,7 @@ class Client(io.ComfyNode):
             outputs=[
                 ParamClient.Output(
                     id="client",
-                    display_name="CLIENT",
+                    display_name="API Client",
                     tooltip="The initialized and ready to query OpenAI API client"
                 )
             ],

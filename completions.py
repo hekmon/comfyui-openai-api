@@ -28,13 +28,13 @@ class ChatCompletion(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIChatCompletion",
+            node_id="OAIAPI_ChatCompletion",
             display_name="OpenAI API - Chat Completion",
             category="OpenAI API",
             inputs=[
                 ParamClient.Input(
                     id="client",
-                    display_name="Client",
+                    display_name="API Client",
                     tooltip="The OpenAI API client to use to perform the request"
                 ),
                 io.String.Input(
@@ -107,7 +107,7 @@ class ChatCompletion(io.ComfyNode):
                 system_prompt: str | None = None,
                 history: HistoryPayload | None = None,
                 options: dict | None = None,
-                images: torch.Tensor | None = None,
+                images: list[torch.Tensor] | None = None,
                 ) -> io.NodeOutput:
         # Handle options
         seed: int | None = None

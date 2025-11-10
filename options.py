@@ -9,7 +9,7 @@ class OptionSeed(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPISeed",
+            node_id="OAIAPI_Seed",
             display_name="OpenAI API - Seed",
             category="OpenAI API/Options",
             inputs=[
@@ -56,7 +56,7 @@ class OptionTemperature(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPITemperature",
+            node_id="OAIAPI_Temperature",
             display_name="OpenAI API - Temperature",
             category="OpenAI API/Options",
             inputs=[
@@ -105,7 +105,7 @@ class OptionMaxTokens(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIMaxTokens",
+            node_id="OAIAPI_MaxTokens",
             display_name="OpenAI API - Max Tokens",
             category="OpenAI API/Options",
             inputs=[
@@ -153,7 +153,7 @@ class OptionTopP(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPITopP",
+            node_id="OAIAPI_TopP",
             display_name="OpenAI API - Top P",
             category="OpenAI API/Options",
             inputs=[
@@ -202,7 +202,7 @@ class OptionFrequencyPenalty(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIFrequencyPenalty",
+            node_id="OAIAPI_FrequencyPenalty",
             display_name="OpenAI API - Frequency Penalty",
             category="OpenAI API/Options",
             inputs=[
@@ -251,7 +251,7 @@ class OptionPresencePenalty(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIPresencePenalty",
+            node_id="OAIAPI_PresencePenalty",
             display_name="OpenAI API - Presence Penalty",
             category="OpenAI API/Options",
             inputs=[
@@ -300,7 +300,7 @@ class OptionExtraBody(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIExtraBody",
+            node_id="OAIAPI_ExtraBody",
             display_name="OpenAI API - Extra Body",
             category="OpenAI API/Options",
             inputs=[
@@ -357,7 +357,7 @@ class OptionDeveloperRole(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="OAIAPIDeveloperRole",
+            node_id="OAIAPI_DeveloperRole",
             display_name="OpenAI API - Developer Role",
             category="OpenAI API/Options",
             inputs=[
