@@ -242,5 +242,5 @@ class ChatCompletion(io.ComfyNode):
         # Return the response and the history
         return io.NodeOutput(
             completion.choices[0].message.content,
-            messages,
+            HistoryPayload(messages),
         )
