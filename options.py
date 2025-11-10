@@ -13,12 +13,6 @@ class OptionSeed(io.ComfyNode):
             display_name="OpenAI API - Seed",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Int.Input(
                     id="seed",
                     display_name="Seed",
@@ -26,7 +20,13 @@ class OptionSeed(io.ComfyNode):
                     default=42,
                     control_after_generate=True,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -40,7 +40,7 @@ class OptionSeed(io.ComfyNode):
     @classmethod
     def execute(cls,
                 seed: int,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"seed": seed}
@@ -60,12 +60,6 @@ class OptionTemperature(io.ComfyNode):
             display_name="OpenAI API - Temperature",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Float.Input(
                     id="temperature",
                     display_name="Temperature",
@@ -75,7 +69,13 @@ class OptionTemperature(io.ComfyNode):
                     max=2.0,
                     step=0.1,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -89,7 +89,7 @@ class OptionTemperature(io.ComfyNode):
     @classmethod
     def execute(cls,
                 temperature: float,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"temperature": temperature}
@@ -109,12 +109,6 @@ class OptionMaxTokens(io.ComfyNode):
             display_name="OpenAI API - Max Tokens",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Int.Input(
                     id="max_tokens",
                     display_name="Max Tokens",
@@ -123,7 +117,13 @@ class OptionMaxTokens(io.ComfyNode):
                     min=1,
                     control_after_generate=False,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -137,7 +137,7 @@ class OptionMaxTokens(io.ComfyNode):
     @classmethod
     def execute(cls,
                 max_tokens: int,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"max_tokens": max_tokens}
@@ -157,12 +157,6 @@ class OptionTopP(io.ComfyNode):
             display_name="OpenAI API - Top P",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Float.Input(
                     id="top_p",
                     display_name="Top P",
@@ -172,7 +166,13 @@ class OptionTopP(io.ComfyNode):
                     max=1.0,
                     step=0.01,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -186,7 +186,7 @@ class OptionTopP(io.ComfyNode):
     @classmethod
     def execute(cls,
                 top_p: float,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"top_p": top_p}
@@ -206,12 +206,6 @@ class OptionFrequencyPenalty(io.ComfyNode):
             display_name="OpenAI API - Frequency Penalty",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Float.Input(
                     id="frequency_penalty",
                     display_name="Top P",
@@ -221,7 +215,13 @@ class OptionFrequencyPenalty(io.ComfyNode):
                     max=2.0,
                     step=0.1,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -235,7 +235,7 @@ class OptionFrequencyPenalty(io.ComfyNode):
     @classmethod
     def execute(cls,
                 frequency_penalty: float,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"frequency_penalty": frequency_penalty}
@@ -255,12 +255,6 @@ class OptionPresencePenalty(io.ComfyNode):
             display_name="OpenAI API - Presence Penalty",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Float.Input(
                     id="presence_penalty",
                     display_name="Top P",
@@ -270,7 +264,13 @@ class OptionPresencePenalty(io.ComfyNode):
                     max=2.0,
                     step=0.1,
                     display_mode=io.NumberDisplay.number,
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -284,7 +284,7 @@ class OptionPresencePenalty(io.ComfyNode):
     @classmethod
     def execute(cls,
                 presence_penalty: float,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"presence_penalty": presence_penalty}
@@ -304,12 +304,6 @@ class OptionExtraBody(io.ComfyNode):
             display_name="OpenAI API - Extra Body",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.String.Input(
                     id="extra_body",
                     display_name="Extra Body",
@@ -317,7 +311,13 @@ class OptionExtraBody(io.ComfyNode):
                     multiline=True,
                     default=json.dumps(
                         {"repetition_penalty": 0.5, "seed": 42}, indent=4),
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -341,7 +341,7 @@ class OptionExtraBody(io.ComfyNode):
     @classmethod
     def execute(cls,
                 extra_body: str,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = json.loads(extra_body)
@@ -361,12 +361,6 @@ class OptionDeveloperRole(io.ComfyNode):
             display_name="OpenAI API - Developer Role",
             category="OpenAI API/Options",
             inputs=[
-                ParamOptions.Input(
-                    id="previous_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
                 io.Boolean.Input(
                     id="use_developer_role",
                     display_name="Instructions Role",
@@ -374,7 +368,13 @@ class OptionDeveloperRole(io.ComfyNode):
                     default=False,
                     label_on="System",
                     label_off="Developer",
-                )
+                ),
+                ParamOptions.Input(
+                    id="previous_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
             ],
             outputs=[
                 ParamOptions.Output(
@@ -388,7 +388,7 @@ class OptionDeveloperRole(io.ComfyNode):
     @classmethod
     def execute(cls,
                 use_developer_role: bool,
-                previous_options: OptionsPayload | None,
+                previous_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if previous_options is None:
             options = {"use_developer_role": use_developer_role}
