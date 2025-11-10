@@ -1,7 +1,6 @@
 from urllib.parse import urlparse
 
 from openai import OpenAI
-
 from comfy_api.latest import io
 
 from .iotypes import ParamClient

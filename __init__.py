@@ -3,7 +3,6 @@ from comfy_api.latest import ComfyExtension, io
 
 from .client import Client
 from .completions import ChatCompletion
-from .debug import Debug
 from .options import OptionSeed, OptionTemperature, OptionMaxTokens, OptionTopP, OptionFrequencyPenalty, OptionPresencePenalty, OptionExtraBody, OptionDeveloperRole
 
 # NODE_CLASS_MAPPINGS = {
@@ -42,7 +41,7 @@ class OpenAIAPIExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
             Client,
-            # ChatCompletion,
+            ChatCompletion,
             # Debug,
             # OptionSeed,
             # OptionTemperature,
