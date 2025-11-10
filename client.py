@@ -52,13 +52,15 @@ class Client(io.ComfyNode):
         )
 
     @classmethod
-    def validate_inputs(cls, base_url: str) -> bool | str:
-        try:
-            result = urlparse(base_url)
-            if result.scheme not in ["http", "https"]:
-                return "URL scheme must be http or https"
-        except ValueError as e:
-            return f"invalid URL: {e}"
+    def validate_inputs(cls, base_url: str | None) -> bool | str:
+        # base_url can be None if coming from another node
+        if base_url is not None:
+            try:
+                result = urlparse(base_url)
+                if result.scheme not in ["http", "https"]:
+                    return "URL scheme must be http or https"
+            except ValueError as e:
+                return f"invalid URL: {e}"
         return True
 
     @classmethod
