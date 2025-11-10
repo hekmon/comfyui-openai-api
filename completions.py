@@ -1,5 +1,6 @@
 import base64
 from io import BytesIO
+from typing import Any
 
 import torch
 import numpy as np
@@ -9,7 +10,7 @@ from openai import OpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
 
-from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload
+from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
 
 
 def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
@@ -106,7 +107,7 @@ class ChatCompletion(io.ComfyNode):
                 prompt: str,
                 system_prompt: str | None = None,
                 history: HistoryPayload | None = None,
-                options: dict | None = None,
+                options: OptionsPayload | None = None,
                 images: list[torch.Tensor] | None = None,
                 ) -> io.NodeOutput:
         # Handle options
@@ -117,29 +118,30 @@ class ChatCompletion(io.ComfyNode):
         frequency_penalty: float | None = None
         presence_penalty: float | None = None
         use_developer_role: bool = False
+        extra_body: dict[str, Any] = {}
         if options is not None:
-            options = options.copy()
-            if "seed" in options:
-                seed = options["seed"]
-                del options["seed"]
-            if "temperature" in options:
-                temperature = options["temperature"]
-                del options["temperature"]
-            if "max_tokens" in options:
-                max_tokens = options["max_tokens"]
-                del options["max_tokens"]
-            if "top_p" in options:
-                top_p = options["top_p"]
-                del options["top_p"]
-            if "frequency_penalty" in options:
-                frequency_penalty = options["frequency_penalty"]
-                del options["frequency_penalty"]
-            if "presence_penalty" in options:
-                presence_penalty = options["presence_penalty"]
-                del options["presence_penalty"]
-            if "use_developer_role" in options:
-                use_developer_role = options["use_developer_role"]
-                del options["use_developer_role"]
+            extra_body = options.get_options_copy()
+            if "seed" in extra_body:
+                seed = extra_body["seed"]
+                del extra_body["seed"]
+            if "temperature" in extra_body:
+                temperature = extra_body["temperature"]
+                del extra_body["temperature"]
+            if "max_tokens" in extra_body:
+                max_tokens = extra_body["max_tokens"]
+                del extra_body["max_tokens"]
+            if "top_p" in extra_body:
+                top_p = extra_body["top_p"]
+                del extra_body["top_p"]
+            if "frequency_penalty" in extra_body:
+                frequency_penalty = extra_body["frequency_penalty"]
+                del extra_body["frequency_penalty"]
+            if "presence_penalty" in extra_body:
+                presence_penalty = extra_body["presence_penalty"]
+                del extra_body["presence_penalty"]
+            if "use_developer_role" in extra_body:
+                use_developer_role = extra_body["use_developer_role"]
+                del extra_body["use_developer_role"]
         # Handle system prompt
         if history is not None:
             messages = history.get_msgs_copy()
@@ -226,7 +228,7 @@ class ChatCompletion(io.ComfyNode):
             top_p=top_p,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            extra_body=options,
+            extra_body=extra_body,
             n=1
         )
         # Add the response to the history
