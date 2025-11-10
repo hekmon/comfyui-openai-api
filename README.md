@@ -10,7 +10,23 @@ Thanks to its simplicity the project has a low footprint: it only has 1 external
 - `numpy` for computation but it is already a dependency of ComfyUI
 - `Pillow` also already used by ComfyUI for image processing
 
+## Usage
+
 The default `base_url` parameter value targets the official OpenAI API endpoint by default but by changing it, you can also use this project with any OpenAI API compatible servers like Ollama, vLLM, TGI, etc...
+
+Multiples images are supported as long as they fed batched to the chat completion node.
+
+If you want to customize the chat completion, you can chain options to modify the request. Most common options are available as predefined nodes but you can inject any key/value pair using the `Extra body` node.
+
+Options nodes are available for:
+- `seed`
+- `temperature`
+- `max_tokens`
+- `top_p`
+- `frequency_penalty`
+- `presence_penalty`
+- `developer_role`
+- `extra_body` (for any other key/value pair)
 
 ## Installation
 
@@ -24,18 +40,6 @@ Search for `OpenAI API` in the `Custom Nodes Manager` and install it.
 
 On the github interface, click the green `<> Code` button and then `Download ZIP`. Extract the root folder of the zip file into your `ComfyUI/custom_nodes` directory.
 
-## Usage
-
-If you want to customize the chat completion, you can chain options to modify the request. Most common options are available as predefined nodes but you can inject any key/value pair using the `Extra body` node.
-
-Options nodes are available for:
-- `seed`
-- `temperature`
-- `max_tokens`
-- `top_p`
-- `frequency_penalty`
-- `presence_penalty`
-- `developer_role`
-- `extra_body` (for any other key/value pair)
+## Example
 
 ![Example](res/example.png)
