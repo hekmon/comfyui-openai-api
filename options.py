@@ -2,7 +2,8 @@ import json
 
 from comfy.comfy_types import IO
 
-from .iotypes import OAIAPIIO
+from .iotypes import ParamOptions
+
 
 class OptionSeed:
     CATEGORY = "OpenAI API/Options"
@@ -33,6 +34,7 @@ class OptionSeed:
             options = options.copy()
             options["seed"] = seed
         return (options,)
+
 
 class OptionTemperature:
     CATEGORY = "OpenAI API/Options"

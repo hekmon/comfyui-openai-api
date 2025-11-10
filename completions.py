@@ -9,7 +9,7 @@ from openai import OpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
 
-from .iotypes import ParamClient, ParamHistory, ParamOptions
+from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload
 
 
 def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
@@ -105,7 +105,7 @@ class ChatCompletion(io.ComfyNode):
                 model: str,
                 prompt: str,
                 system_prompt: str | None = None,
-                history: list[ChatCompletionMessageParam] | None = None,
+                history: HistoryPayload | None = None,
                 options: dict | None = None,
                 images: torch.Tensor | None = None,
                 ) -> io.NodeOutput:
@@ -142,10 +142,10 @@ class ChatCompletion(io.ComfyNode):
                 del options["use_developer_role"]
         # Handle system prompt
         if history is not None:
-            messages = history.copy()
+            messages = history.get_msgs_copy()
             if system_prompt is not None:
                 # Should we insert it at the beginning or replace the existing system message?
-                first_msg_role = history[0].get('role')
+                first_msg_role = messages[0].get('role')
                 if first_msg_role == "system" or first_msg_role == "developer":
                     # Replace the existing system message
                     if use_developer_role:
