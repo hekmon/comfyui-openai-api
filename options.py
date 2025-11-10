@@ -369,12 +369,12 @@ class OptionDeveloperRole(io.ComfyNode):
             description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Use this node to adapt the generation with the new 'developer' role.",
             inputs=[
                 io.Boolean.Input(
-                    id="use_developer_role",
+                    id="instructions_role",
                     display_name="Instructions Role",
-                    tooltip="Set this switch to true to set the system prompt as the 'developer' role instead of the 'system'",
+                    tooltip="Set this switch to true to set the instructions prompt role as 'developer' instead of 'system'",
                     default=False,
-                    label_on="System",
-                    label_off="Developer",
+                    label_on="developer",
+                    label_off="system",
                 ),
                 ParamOptions.Input(
                     id="other_options",
@@ -394,14 +394,14 @@ class OptionDeveloperRole(io.ComfyNode):
 
     @classmethod
     def execute(cls,
-                use_developer_role: bool,
+                instructions_role: bool,
                 other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
         if other_options is None:
-            options = {"use_developer_role": use_developer_role}
+            options = {"use_developer_role": instructions_role}
         else:
             options = other_options.get_options_copy()
-            options["use_developer_role"] = use_developer_role
+            options["use_developer_role"] = instructions_role
         return io.NodeOutput(
             OptionsPayload(options)
         )
