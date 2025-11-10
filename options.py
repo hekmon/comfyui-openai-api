@@ -22,7 +22,7 @@ class OptionSeed(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -40,12 +40,12 @@ class OptionSeed(io.ComfyNode):
     @classmethod
     def execute(cls,
                 seed: int,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"seed": seed}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["seed"] = seed
         return io.NodeOutput(
             OptionsPayload(options)
@@ -72,7 +72,7 @@ class OptionTemperature(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -90,12 +90,12 @@ class OptionTemperature(io.ComfyNode):
     @classmethod
     def execute(cls,
                 temperature: float,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"temperature": temperature}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["temperature"] = temperature
         return io.NodeOutput(
             OptionsPayload(options)
@@ -121,7 +121,7 @@ class OptionMaxTokens(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -139,12 +139,12 @@ class OptionMaxTokens(io.ComfyNode):
     @classmethod
     def execute(cls,
                 max_tokens: int,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"max_tokens": max_tokens}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["max_tokens"] = max_tokens
         return io.NodeOutput(
             OptionsPayload(options)
@@ -171,7 +171,7 @@ class OptionTopP(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -189,12 +189,12 @@ class OptionTopP(io.ComfyNode):
     @classmethod
     def execute(cls,
                 top_p: float,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"top_p": top_p}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["top_p"] = top_p
         return io.NodeOutput(
             OptionsPayload(options)
@@ -221,7 +221,7 @@ class OptionFrequencyPenalty(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -239,12 +239,12 @@ class OptionFrequencyPenalty(io.ComfyNode):
     @classmethod
     def execute(cls,
                 frequency_penalty: float,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"frequency_penalty": frequency_penalty}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["frequency_penalty"] = frequency_penalty
         return io.NodeOutput(
             OptionsPayload(options)
@@ -271,7 +271,7 @@ class OptionPresencePenalty(io.ComfyNode):
                     display_mode=io.NumberDisplay.number,
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -289,12 +289,12 @@ class OptionPresencePenalty(io.ComfyNode):
     @classmethod
     def execute(cls,
                 presence_penalty: float,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"presence_penalty": presence_penalty}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["presence_penalty"] = presence_penalty
         return io.NodeOutput(
             OptionsPayload(options)
@@ -319,7 +319,7 @@ class OptionExtraBody(io.ComfyNode):
                         {"repetition_penalty": 0.5, "seed": 42}, indent=4),
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -347,12 +347,12 @@ class OptionExtraBody(io.ComfyNode):
     @classmethod
     def execute(cls,
                 extra_body: str,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = json.loads(extra_body)
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options.update(json.loads(extra_body))
         return io.NodeOutput(
             OptionsPayload(options)
@@ -377,7 +377,7 @@ class OptionDeveloperRole(io.ComfyNode):
                     label_off="Developer",
                 ),
                 ParamOptions.Input(
-                    id="previous_options",
+                    id="other_options",
                     display_name="Options",
                     optional=True,
                     tooltip="Others options to merge with",
@@ -395,12 +395,12 @@ class OptionDeveloperRole(io.ComfyNode):
     @classmethod
     def execute(cls,
                 use_developer_role: bool,
-                previous_options: OptionsPayload | None = None,
+                other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
-        if previous_options is None:
+        if other_options is None:
             options = {"use_developer_role": use_developer_role}
         else:
-            options = previous_options.get_options_copy()
+            options = other_options.get_options_copy()
             options["use_developer_role"] = use_developer_role
         return io.NodeOutput(
             OptionsPayload(options)
