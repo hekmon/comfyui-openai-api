@@ -24,8 +24,18 @@ Search for `OpenAI API` in the `Custom Nodes Manager` and install it.
 
 On the github interface, click the green `<> Code` button and then `Download ZIP`. Extract the root folder of the zip file into your `ComfyUI/custom_nodes` directory.
 
-## Example
+## Usage
 
 If you want to customize the chat completion, you can chain options to modify the request. Most common options are available as predefined nodes but you can inject any key/value pair using the `Extra body` node.
+
+Options nodes are available for:
+- `seed`
+- `temperature`
+- `max_tokens`
+- `top_p`
+- `frequency_penalty`
+- `presence_penalty`
+- `developer_role`
+- `extra_body` (for any other key/value pair)
 
 ![Example](res/example.png)
