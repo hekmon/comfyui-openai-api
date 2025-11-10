@@ -146,7 +146,7 @@ class ChatCompletion(io.ComfyNode):
         # Handle system prompt
         if history is not None:
             messages = history.get_msgs_copy()
-            if system_prompt is not None:
+            if system_prompt is not None and system_prompt != "":
                 # Should we insert it at the beginning or replace the existing system message?
                 first_msg_role = messages[0].get('role')
                 if first_msg_role == "system" or first_msg_role == "developer":
