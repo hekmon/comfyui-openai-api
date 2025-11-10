@@ -39,7 +39,9 @@ class Client(io.ComfyNode):
                     id="api_key",
                     display_name="API Key",
                     optional=True,
-                    tooltip="The API key to use, if any",
+                    tooltip="The API key to use. An empty API key set with the openai package might end up with a connection error, leave the '-' placeholder if no key is needed.",
+                    placeholder="Leave the '-' placeholder if no key is needed",
+                    default="-"
                 ),
             ],
             outputs=[
