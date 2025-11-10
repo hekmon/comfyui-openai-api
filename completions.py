@@ -84,7 +84,7 @@ class ChatCompletion(io.ComfyNode):
                     tooltip="Generated text response",
                 ),
                 ParamHistory.Output(
-                    id="history",
+                    id="complete_chatcompletion",
                     display_name="History",
                     tooltip="Conversation history",
                 ),
