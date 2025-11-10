@@ -18,8 +18,8 @@ class OpenAIAPIExtension(ComfyExtension):
             OptionTopP,
             OptionFrequencyPenalty,
             OptionPresencePenalty,
-            OptionExtraBody,
-            OptionDeveloperRole
+            OptionDeveloperRole,
+            OptionExtraBody
         ]
 
 

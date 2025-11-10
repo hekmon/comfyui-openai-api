@@ -301,6 +301,54 @@ class OptionPresencePenalty(io.ComfyNode):
         )
 
 
+class OptionDeveloperRole(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_DeveloperRole",
+            display_name="OpenAI API - Developer Role",
+            category="OpenAI API/Options",
+            description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Use this node to adapt the generation with the new 'developer' role.",
+            inputs=[
+                io.Boolean.Input(
+                    id="instructions_role",
+                    display_name="Instructions Role",
+                    tooltip="Set this switch to true to set the instructions prompt role as 'developer' instead of 'system'",
+                    default=False,
+                    label_on="developer",
+                    label_off="system",
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                instructions_role: bool,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {"use_developer_role": instructions_role}
+        else:
+            options = other_options.get_options_copy()
+            options["use_developer_role"] = instructions_role
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
+
+
 class OptionExtraBody(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -354,54 +402,6 @@ class OptionExtraBody(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options.update(json.loads(extra_body))
-        return io.NodeOutput(
-            OptionsPayload(options)
-        )
-
-
-class OptionDeveloperRole(io.ComfyNode):
-    @classmethod
-    def define_schema(cls) -> io.Schema:
-        return io.Schema(
-            node_id="OAIAPI_DeveloperRole",
-            display_name="OpenAI API - Developer Role",
-            category="OpenAI API/Options",
-            description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Use this node to adapt the generation with the new 'developer' role.",
-            inputs=[
-                io.Boolean.Input(
-                    id="instructions_role",
-                    display_name="Instructions Role",
-                    tooltip="Set this switch to true to set the instructions prompt role as 'developer' instead of 'system'",
-                    default=False,
-                    label_on="developer",
-                    label_off="system",
-                ),
-                ParamOptions.Input(
-                    id="other_options",
-                    display_name="Options",
-                    optional=True,
-                    tooltip="Others options to merge with",
-                ),
-            ],
-            outputs=[
-                ParamOptions.Output(
-                    id="options",
-                    display_name="Options",
-                    tooltip="Merged options to forward",
-                ),
-            ],
-        )
-
-    @classmethod
-    def execute(cls,
-                instructions_role: bool,
-                other_options: OptionsPayload | None = None,
-                ) -> io.NodeOutput:
-        if other_options is None:
-            options = {"use_developer_role": instructions_role}
-        else:
-            options = other_options.get_options_copy()
-            options["use_developer_role"] = instructions_role
         return io.NodeOutput(
             OptionsPayload(options)
         )
