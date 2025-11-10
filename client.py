@@ -52,7 +52,7 @@ class Client(io.ComfyNode):
         )
 
     @classmethod
-    def validate_inputs(cls, base_url) -> bool | str:
+    def validate_inputs(cls, base_url: str) -> bool | str:
         try:
             result = urlparse(base_url)
             if result.scheme not in ["http", "https"]:

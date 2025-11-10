@@ -92,7 +92,7 @@ class ChatCompletion(io.ComfyNode):
         )
 
     @classmethod
-    def validate_inputs(cls, model, prompt) -> bool | str:
+    def validate_inputs(cls, model: str, prompt: str) -> bool | str:
         if model == "":
             return "model must be specified"
         if prompt == "":
