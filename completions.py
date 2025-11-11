@@ -7,10 +7,12 @@ from typing import Any
 import torch
 import numpy as np
 from PIL import Image
-from comfy_api.latest import io
 from openai import OpenAI
+from openai.types.completion_usage import CompletionUsage
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
+
+from comfy_api.latest import io, ui
 
 from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
 
@@ -25,6 +27,64 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+def format_usage(usage: CompletionUsage | None) -> str | None:
+    if usage is None:
+        return None
+    # Prompt tokens
+    text = f"Prompt tokens: {usage.prompt_tokens}"
+    if usage.prompt_tokens_details is not None:
+        text += f" ("
+        details = False
+        if usage.prompt_tokens_details.audio_tokens is not None and \
+                usage.prompt_tokens_details.audio_tokens > 0:
+            # if details:
+            #     text += ", "
+            text += f"audio: {usage.prompt_tokens_details.audio_tokens}"
+            details = True
+        if usage.prompt_tokens_details.cached_tokens is not None and \
+                usage.prompt_tokens_details.cached_tokens > 0:
+            if details:
+                text += ", "
+            text += f"cached: {usage.prompt_tokens_details.cached_tokens}"
+        text += ")"
+    # Completion tokens
+    text += f"\nCompletions tokens: {usage.completion_tokens}"
+    if usage.completion_tokens_details is not None:
+        text += f" ("
+        details = False
+        if usage.completion_tokens_details.audio_tokens is not None and \
+                usage.completion_tokens_details.audio_tokens > 0:
+            text += f"audio: {usage.completion_tokens_details.audio_tokens}"
+            details = True
+        if usage.completion_tokens_details.reasoning_tokens is not None and \
+                usage.completion_tokens_details.reasoning_tokens > 0:
+            if details:
+                text += ", "
+            text += f"reasoning: {usage.completion_tokens_details.reasoning_tokens}"
+            details = True
+        if usage.completion_tokens_details.accepted_prediction_tokens is not None and \
+                usage.completion_tokens_details.accepted_prediction_tokens > 0:
+            if details:
+                text += ", "
+            text += f"prediction accepted: {usage.completion_tokens_details.accepted_prediction_tokens}"
+            details = True
+        if usage.completion_tokens_details.rejected_prediction_tokens is not None and \
+                usage.completion_tokens_details.rejected_prediction_tokens > 0:
+            if details:
+                text += ", "
+            text += f"prediction rejected: {usage.completion_tokens_details.rejected_prediction_tokens}"
+            details = True
+        if usage.completion_tokens_details.audio_tokens is not None and \
+                usage.completion_tokens_details.audio_tokens > 0:
+            if details:
+                text += ", "
+            text += f"audio: {usage.completion_tokens_details.audio_tokens}"
+            # details = True
+        text += ")"
+    # Return the formatted text
+    return text
 
 
 class ChatCompletion(io.ComfyNode):
@@ -242,8 +302,9 @@ class ChatCompletion(io.ComfyNode):
         completion = client.chat.completions.create(
             model=model,
             messages=messages,
-            seed=seed,
+            seed=seed,  # deprecated, should we remove it?
             temperature=temperature,
+            # should be max_completion_tokens but only vLLM has implemented it so far, Ollama and TGI have not
             max_tokens=max_tokens,
             top_p=top_p,
             frequency_penalty=frequency_penalty,
@@ -258,8 +319,13 @@ class ChatCompletion(io.ComfyNode):
                 "content": completion.choices[0].message.content
             }
         )
-        # Return the response and the history
+        # Handle usage stats as text preview
+        stats = format_usage(completion.usage)
+        # add it to the console following the openai http call log for now as previewtext does not work yet
+        print(stats)
+        # Return the response and the history and the stats for the UI
         return io.NodeOutput(
             completion.choices[0].message.content,
             HistoryPayload(messages),
+            ui=ui.PreviewText(stats) if stats else ui.PreviewText(""),
         )
