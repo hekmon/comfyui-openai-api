@@ -4,7 +4,7 @@ description = "Call LLM and VLM from ComfyUI using the OpenAI API standard. Comp
 version = "3.0.0"
 license = { file = "LICENSE" }
 # Numpy and Pillow same as ComfyUI
-dependencies = ["openai>=2.7.1<3.0.0", "numpy>=1.25.0", "Pillow"]
+dependencies = ["openai>=2.7.1,<4.0.0", "numpy>=1.25.0", "Pillow"]
 
 [project.urls]
 Repository = "https://github.com/hekmon/comfyui-openai-api"
