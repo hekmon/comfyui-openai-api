@@ -3,7 +3,7 @@ from comfy_api.latest import ComfyExtension, io
 
 from .client import Client
 from .completions import ChatCompletion
-from .options import OptionSeed, OptionTemperature, OptionMaxTokens, OptionTopP, OptionFrequencyPenalty, OptionPresencePenalty, OptionExtraBody, OptionDeveloperRole
+from .options import OptionSeed, OptionTemperature, OptionMaxTokens, OptionMaxCompletionTokens, OptionTopP, OptionFrequencyPenalty, OptionPresencePenalty, OptionExtraBody, OptionDeveloperRole
 
 
 class OpenAIAPIExtension(ComfyExtension):
@@ -15,6 +15,7 @@ class OpenAIAPIExtension(ComfyExtension):
             OptionSeed,
             OptionTemperature,
             OptionMaxTokens,
+            OptionMaxCompletionTokens,
             OptionTopP,
             OptionFrequencyPenalty,
             OptionPresencePenalty,

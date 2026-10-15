@@ -152,6 +152,56 @@ class OptionMaxTokens(io.ComfyNode):
         )
 
 
+class OptionMaxCompletionTokens(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_MaxCompletionTokens",
+            display_name="OpenAI API - Max Completion Tokens",
+            category="OpenAI API/Options",
+            description="Sets the maximum number of tokens that can be generated in the response for models that reject max_tokens. Do not combine this node with OpenAI API - Max Tokens.",
+            inputs=[
+                io.Int.Input(
+                    id="max_completion_tokens",
+                    display_name="Max Completion Tokens",
+                    tooltip="An upper bound for the number of tokens that can be generated for a response. Use this instead of Max Tokens on models that reject max_tokens.",
+                    default=512,
+                    min=1,
+                    max=1000000, # if max is not set, ComfyUI will applied a default max value at 2048: we do not want this too low value
+                    control_after_generate=False,
+                    display_mode=io.NumberDisplay.number,
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                max_completion_tokens: int,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {"max_completion_tokens": max_completion_tokens}
+        else:
+            options = other_options.get_options_copy()
+            options["max_completion_tokens"] = max_completion_tokens
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
+
+
 class OptionTopP(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:

@@ -22,11 +22,14 @@ Options nodes are available for:
 - `seed`
 - `temperature`
 - `max_tokens`
+- `max_completion_tokens`
 - `top_p`
 - `frequency_penalty`
 - `presence_penalty`
 - `developer_role`
 - `extra_body` (for any other key/value pair)
+
+Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compatible servers keep using `max_tokens`. Newer OpenAI chat models that reject `max_tokens` use `max_completion_tokens`.
 
 ## API key
 

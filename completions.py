@@ -194,6 +194,7 @@ class ChatCompletion(io.ComfyNode):
         seed: int | None = None
         temperature: float | None = None
         max_tokens: int | None = None
+        max_completion_tokens: int | None = None
         top_p: float | None = None
         frequency_penalty: float | None = None
         presence_penalty: float | None = None
@@ -210,6 +211,9 @@ class ChatCompletion(io.ComfyNode):
             if "max_tokens" in extra_body:
                 max_tokens = extra_body["max_tokens"]
                 del extra_body["max_tokens"]
+            if "max_completion_tokens" in extra_body:
+                max_completion_tokens = extra_body["max_completion_tokens"]
+                del extra_body["max_completion_tokens"]
             if "top_p" in extra_body:
                 top_p = extra_body["top_p"]
                 del extra_body["top_p"]
@@ -298,20 +302,36 @@ class ChatCompletion(io.ComfyNode):
                     "content": prompt
                 }
             )
-        # Create the completion
-        completion = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            seed=seed,  # deprecated, should we remove it?
-            temperature=temperature,
-            # should be max_completion_tokens but only vLLM has implemented it so far, Ollama and TGI have not
-            max_tokens=max_tokens,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            extra_body=extra_body,
-            n=1
-        )
+        # Create the completion. Omit unset optional fields so providers are not
+        # sent null values, and never send both token limits at once.
+        if max_tokens is not None and max_completion_tokens is not None:
+            raise ValueError(
+                "max_tokens and max_completion_tokens cannot both be set. "
+                "Use only one: max_tokens for older models and providers, "
+                "or max_completion_tokens for newer OpenAI chat models."
+            )
+        request_kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "n": 1,
+        }
+        if seed is not None:
+            request_kwargs["seed"] = seed  # deprecated, should we remove it?
+        if temperature is not None:
+            request_kwargs["temperature"] = temperature
+        if max_tokens is not None:
+            request_kwargs["max_tokens"] = max_tokens
+        if max_completion_tokens is not None:
+            request_kwargs["max_completion_tokens"] = max_completion_tokens
+        if top_p is not None:
+            request_kwargs["top_p"] = top_p
+        if frequency_penalty is not None:
+            request_kwargs["frequency_penalty"] = frequency_penalty
+        if presence_penalty is not None:
+            request_kwargs["presence_penalty"] = presence_penalty
+        if extra_body:
+            request_kwargs["extra_body"] = extra_body
+        completion = client.chat.completions.create(**request_kwargs)
         # Add the response to the history
         messages.append(
             {
