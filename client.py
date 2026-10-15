@@ -1,9 +1,19 @@
+import os
 from urllib.parse import urlparse
 
 from openai import OpenAI
 from comfy_api.latest import io
 
 from .iotypes import ParamClient
+
+# API keys must never travel through widget inputs: ComfyUI serializes every
+# widget value (even from bypassed nodes) into the `prompt` and `workflow`
+# metadata chunks of generated images and exported workflows, which would leak
+# them. The key is instead read from the OPENAI_API_KEY environment variable
+# at execution time. The "-" placeholder keeps keyless inference servers
+# (vLLM, etc) working: they require an Authorization header but do not
+# validate its value.
+_DEFAULT_KEYLESS_API_KEY = "-"
 
 
 class Client(io.ComfyNode):
@@ -13,7 +23,7 @@ class Client(io.ComfyNode):
             node_id="OAIAPI_Client",
             display_name="OpenAI API - Client",
             category="OpenAI API",
-            description="The OpenAI API client used to perform chat completions",
+            description="The OpenAI API client used to perform chat completions. The API key is read from the OPENAI_API_KEY environment variable at execution time and must never be stored in the workflow: ComfyUI embeds widget values into the metadata of generated images, which would leak it.",
             inputs=[
                 io.String.Input(
                     id="base_url",
@@ -35,14 +45,6 @@ class Client(io.ComfyNode):
                     tooltip="Request timeout in seconds",
                     default=600,
                     min=1,
-                ),
-                io.String.Input(
-                    id="api_key",
-                    display_name="API Key",
-                    optional=True,
-                    tooltip="The API key to use. An empty API key set with the openai package might end up with a connection error, leave the '-' placeholder if no key is needed.",
-                    placeholder="Leave the '-' placeholder if no key is needed",
-                    default="-"
                 ),
             ],
             outputs=[
@@ -67,10 +69,10 @@ class Client(io.ComfyNode):
         return True
 
     @classmethod
-    def execute(cls, base_url: str, max_retries: int, timeout: int, api_key: str | None = None) -> io.NodeOutput:
+    def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
         return io.NodeOutput(
             OpenAI(
-                api_key=api_key,
+                api_key=os.environ.get("OPENAI_API_KEY", _DEFAULT_KEYLESS_API_KEY),
                 base_url=base_url,
                 max_retries=max_retries,
                 timeout=timeout
