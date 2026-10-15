@@ -12,7 +12,7 @@ Thanks to its simplicity the project has a low footprint: it only has 1 external
 
 ## Usage
 
-The default `base_url` parameter value targets the official OpenAI API endpoint by default but by changing it, you can also use this project with any OpenAI API compatible servers like Ollama, vLLM, TGI, etc...
+The default `base_url` parameter value targets the official OpenAI API endpoint by default but by changing it, you can also use this project with any OpenAI API compatible servers like Ollama, vLLM, SGLang, etc...
 
 Multiples images are supported as long as they are fed batched to the chat completion node.
 
