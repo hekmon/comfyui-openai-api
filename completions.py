@@ -33,54 +33,58 @@ def format_usage(usage: CompletionUsage | None) -> str | None:
     if usage is None:
         return None
     # Prompt tokens
+    # Some OpenAI-compatible backends return a usage object without these optional
+    # fields; direct attribute access would raise AttributeError via pydantic __getattr__
+    prompt_tokens_details = getattr(usage, "prompt_tokens_details", None)
     text = f"Prompt tokens: {usage.prompt_tokens}"
-    if usage.prompt_tokens_details is not None:
+    if prompt_tokens_details is not None:
         text += f" ("
         details = False
-        if usage.prompt_tokens_details.audio_tokens is not None and \
-                usage.prompt_tokens_details.audio_tokens > 0:
+        if prompt_tokens_details.audio_tokens is not None and \
+                prompt_tokens_details.audio_tokens > 0:
             # if details:
             #     text += ", "
-            text += f"audio: {usage.prompt_tokens_details.audio_tokens}"
+            text += f"audio: {prompt_tokens_details.audio_tokens}"
             details = True
-        if usage.prompt_tokens_details.cached_tokens is not None and \
-                usage.prompt_tokens_details.cached_tokens > 0:
+        if prompt_tokens_details.cached_tokens is not None and \
+                prompt_tokens_details.cached_tokens > 0:
             if details:
                 text += ", "
-            text += f"cached: {usage.prompt_tokens_details.cached_tokens}"
+            text += f"cached: {prompt_tokens_details.cached_tokens}"
         text += ")"
     # Completion tokens
+    completion_tokens_details = getattr(usage, "completion_tokens_details", None)
     text += f"\nCompletions tokens: {usage.completion_tokens}"
-    if usage.completion_tokens_details is not None:
+    if completion_tokens_details is not None:
         text += f" ("
         details = False
-        if usage.completion_tokens_details.audio_tokens is not None and \
-                usage.completion_tokens_details.audio_tokens > 0:
-            text += f"audio: {usage.completion_tokens_details.audio_tokens}"
+        if completion_tokens_details.audio_tokens is not None and \
+                completion_tokens_details.audio_tokens > 0:
+            text += f"audio: {completion_tokens_details.audio_tokens}"
             details = True
-        if usage.completion_tokens_details.reasoning_tokens is not None and \
-                usage.completion_tokens_details.reasoning_tokens > 0:
+        if completion_tokens_details.reasoning_tokens is not None and \
+                completion_tokens_details.reasoning_tokens > 0:
             if details:
                 text += ", "
-            text += f"reasoning: {usage.completion_tokens_details.reasoning_tokens}"
+            text += f"reasoning: {completion_tokens_details.reasoning_tokens}"
             details = True
-        if usage.completion_tokens_details.accepted_prediction_tokens is not None and \
-                usage.completion_tokens_details.accepted_prediction_tokens > 0:
+        if completion_tokens_details.accepted_prediction_tokens is not None and \
+                completion_tokens_details.accepted_prediction_tokens > 0:
             if details:
                 text += ", "
-            text += f"prediction accepted: {usage.completion_tokens_details.accepted_prediction_tokens}"
+            text += f"prediction accepted: {completion_tokens_details.accepted_prediction_tokens}"
             details = True
-        if usage.completion_tokens_details.rejected_prediction_tokens is not None and \
-                usage.completion_tokens_details.rejected_prediction_tokens > 0:
+        if completion_tokens_details.rejected_prediction_tokens is not None and \
+                completion_tokens_details.rejected_prediction_tokens > 0:
             if details:
                 text += ", "
-            text += f"prediction rejected: {usage.completion_tokens_details.rejected_prediction_tokens}"
+            text += f"prediction rejected: {completion_tokens_details.rejected_prediction_tokens}"
             details = True
-        if usage.completion_tokens_details.audio_tokens is not None and \
-                usage.completion_tokens_details.audio_tokens > 0:
+        if completion_tokens_details.audio_tokens is not None and \
+                completion_tokens_details.audio_tokens > 0:
             if details:
                 text += ", "
-            text += f"audio: {usage.completion_tokens_details.audio_tokens}"
+            text += f"audio: {completion_tokens_details.audio_tokens}"
             # details = True
         text += ")"
     # Return the formatted text
