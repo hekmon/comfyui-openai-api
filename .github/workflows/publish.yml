@@ -12,7 +12,10 @@ jobs:
   publish-node:
     name: Publish Custom Node to registry
     runs-on: ubuntu-latest
-    if: ${{ github.repository_owner == 'hekmon' }}
+    # Skip publishing for pre-release tags (e.g. v3.0.0-rc1): the registry has no
+    # prerelease concept and would serve it as the default install for all users.
+    # Re-enable via workflow_dispatch if a prerelease publish is ever wanted.
+    if: ${{ github.repository_owner == 'hekmon' && !contains(github.ref, '-') }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
