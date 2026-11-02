@@ -14,7 +14,7 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 
 from comfy_api.latest import io, ui
 
-from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
+from .iotypes import ParamClient, ParamHistory, ParamOptions, ParamUnloadableResponse, HistoryPayload, OptionsPayload, UnloadableResponsePayload
 
 
 def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
@@ -161,6 +161,11 @@ class ChatCompletion(io.ComfyNode):
                     id="complete_chatcompletion",
                     display_name="History",
                     tooltip="Conversation history",
+                ),
+                ParamUnloadableResponse.Output(
+                    id="unloadable_response",
+                    display_name="Unloadable Response",
+                    tooltip="The response together with the client and the model used, for the Unload Model node. Use the regular Response output if you do not need model unloading.",
                 ),
             ],
         )
@@ -351,5 +356,10 @@ class ChatCompletion(io.ComfyNode):
         return io.NodeOutput(
             completion.choices[0].message.content,
             HistoryPayload(messages),
+            UnloadableResponsePayload(
+                response=completion.choices[0].message.content,
+                client=client,
+                model=model,
+            ),
             ui=ui.PreviewText(stats) if stats else ui.PreviewText(""),
         )

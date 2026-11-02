@@ -1,7 +1,7 @@
 [project]
 name = "openai-api"
 description = "Call LLM and VLM from ComfyUI using the OpenAI API standard. Compatible with custom inference servers like Ollama, vLLM or SGLang thru their support of the OpenAI API implementation."
-version = "3.0.0"
+version = "3.1.0"
 license = { file = "LICENSE" }
 # Numpy and Pillow same as ComfyUI
 dependencies = ["openai>=2.7.1,<4.0.0", "numpy>=1.25.0", "Pillow"]

@@ -31,6 +31,12 @@ Options nodes are available for:
 
 Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compatible servers keep using `max_tokens`. Newer OpenAI chat models that reject `max_tokens` use `max_completion_tokens`.
 
+## Unloading local models
+
+The Chat Completion node exposes an `Unloadable Response` output which bundles the response, the client and the model used. Wire it into the `Unload Model` node to unload the model from your local inference server once the response has been forwarded, freeing VRAM. Select your backend in the node combo: TabbyAPI, LM Studio, llama.cpp (router mode), Ollama or vLLM. vLLM additionally requires launching the server with `VLLM_SERVER_DEV_MODE=1` and `--enable-sleep-mode`.
+
+The unload is best effort: if it fails (unsupported endpoint, timeout), the response is still forwarded and the workflow does not fail. Pointing the client at the official OpenAI API makes this node a no-op (the unload endpoints do not exist there).
+
 ## API key
 
 The client node reads the API key from the `OPENAI_API_KEY` environment variable **at execution time**. It is intentionally impossible to enter an API key inside the workflow.
