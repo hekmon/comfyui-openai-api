@@ -7,6 +7,8 @@ from typing import Any
 import torch
 import numpy as np
 from PIL import Image
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, wait
 from openai import OpenAI
 from openai.types.completion_usage import CompletionUsage
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
@@ -91,6 +93,51 @@ def format_usage(usage: CompletionUsage | None) -> str | None:
     return text
 
 
+def unload_localhosted_models(client: OpenAI, model: str, timeout_sec: float = 1.0) -> bool:
+    base_url = str(client.base_url).rstrip("/")
+    auth_headers = dict({"Authorization": f"Bearer {client.api_key}"})
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-len("/v1")]
+
+    calls = [
+        # 1. TabbyAPI (no body, auth required)
+        (f"{base_url}/v1/model/unload", auth_headers, None),
+        # 2. LM Studio
+        (f"{base_url}/api/v1/models/unload", auth_headers, {"instance_id": model}),
+        # 3. llama.cpp (router-mode)
+        (f"{base_url}/models/unload", auth_headers, {"model": model}),
+        # 4. Ollama (no auth, but JSON body)
+        (f"{base_url}/api/generate", dict(), {"model": model, "keep_alive": 0}),
+        # 5. vLLM: requires set in VLLM_SERVER_DEV_MODE=1 and backend launched with --enable-sleep-mode
+        (f"{base_url}/sleep?level=2", auth_headers, None)
+    ]
+
+    unloaded_successfully = False
+    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+        futures = []
+        for url, headers, payload in calls:
+            data = None
+            if payload is not None:
+                data = json.dumps(payload).encode("utf-8")
+                headers["Content-Type"] = "application/json"
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            futures.append(pool.submit(urllib.request.urlopen, req, timeout=timeout_sec))
+
+        done, _pending = wait(futures, timeout=timeout_sec)
+        for f in done:
+            try:
+                resp = f.result()
+                try:
+                    if resp.getcode() in (200, 204):
+                        unloaded_successfully = True
+                finally:
+                    resp.close()
+            except Exception:
+                pass
+
+    return unloaded_successfully
+
+
 class ChatCompletion(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -115,6 +162,12 @@ class ChatCompletion(io.ComfyNode):
                     id="force_regen",
                     display_name="Force Regen",
                     tooltip="Set to true to always request a new text generation even if no widget input values have changed (no cache)",
+                    default=False,
+                ),
+                io.Boolean.Input(
+                    id="unload_after",
+                    display_name="Unload after (local LLM only)",
+                    tooltip="Set to true to unload all models by local backends after generation (free VRAM)",
                     default=False,
                 ),
                 io.String.Input(
@@ -193,6 +246,7 @@ class ChatCompletion(io.ComfyNode):
                 options: OptionsPayload | None = None,
                 images: list[torch.Tensor] | None = None,
                 force_regen: bool = False,
+                unload_after: bool = False,
                 ) -> io.NodeOutput:
         # Handle options
         seed: int | None = None
@@ -336,6 +390,9 @@ class ChatCompletion(io.ComfyNode):
         if extra_body:
             request_kwargs["extra_body"] = extra_body
         completion = client.chat.completions.create(**request_kwargs)
+        # Try to unload model by backend
+        if unload_after:
+            unload_localhosted_models(client, model)
         # Add the response to the history
         messages.append(
             {
