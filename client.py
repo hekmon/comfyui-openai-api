@@ -72,7 +72,9 @@ class Client(io.ComfyNode):
     def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
         return io.NodeOutput(
             OpenAI(
-                api_key=os.environ.get("OPENAI_API_KEY", _DEFAULT_KEYLESS_API_KEY),
+                # "or" (not a get() default) so an empty variable also falls
+                # back to the placeholder: the SDK rejects an empty key
+                api_key=os.environ.get("OPENAI_API_KEY") or _DEFAULT_KEYLESS_API_KEY,
                 base_url=base_url,
                 max_retries=max_retries,
                 timeout=timeout
