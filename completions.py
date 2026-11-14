@@ -60,65 +60,44 @@ def extract_response_content(completion: ChatCompletionResponse) -> str:
     return content
 
 
+def _format_token_details(details: Any, fields: list[tuple[str, str]]) -> str:
+    # Only list the strictly positive counters, and only add the parentheses
+    # if there is at least one of them
+    parts = []
+    for attr, label in fields:
+        value = getattr(details, attr, None)
+        if isinstance(value, int) and value > 0:
+            parts.append(f"{label}: {value}")
+    return f" ({', '.join(parts)})" if parts else ""
+
+
+def _format_token_count(value: Any) -> str:
+    return str(value) if value is not None else "n/a"
+
+
 def format_usage(usage: CompletionUsage | None) -> str | None:
     if usage is None:
         return None
-    # Prompt tokens
-    # Some OpenAI-compatible backends return a usage object without these optional
-    # fields; direct attribute access would raise AttributeError via pydantic __getattr__
-    prompt_tokens_details = getattr(usage, "prompt_tokens_details", None)
-    text = f"Prompt tokens: {usage.prompt_tokens}"
-    if prompt_tokens_details is not None:
-        text += f" ("
-        details = False
-        if prompt_tokens_details.audio_tokens is not None and \
-                prompt_tokens_details.audio_tokens > 0:
-            # if details:
-            #     text += ", "
-            text += f"audio: {prompt_tokens_details.audio_tokens}"
-            details = True
-        if prompt_tokens_details.cached_tokens is not None and \
-                prompt_tokens_details.cached_tokens > 0:
-            if details:
-                text += ", "
-            text += f"cached: {prompt_tokens_details.cached_tokens}"
-        text += ")"
-    # Completion tokens
-    completion_tokens_details = getattr(usage, "completion_tokens_details", None)
-    text += f"\nCompletions tokens: {usage.completion_tokens}"
-    if completion_tokens_details is not None:
-        text += f" ("
-        details = False
-        if completion_tokens_details.audio_tokens is not None and \
-                completion_tokens_details.audio_tokens > 0:
-            text += f"audio: {completion_tokens_details.audio_tokens}"
-            details = True
-        if completion_tokens_details.reasoning_tokens is not None and \
-                completion_tokens_details.reasoning_tokens > 0:
-            if details:
-                text += ", "
-            text += f"reasoning: {completion_tokens_details.reasoning_tokens}"
-            details = True
-        if completion_tokens_details.accepted_prediction_tokens is not None and \
-                completion_tokens_details.accepted_prediction_tokens > 0:
-            if details:
-                text += ", "
-            text += f"prediction accepted: {completion_tokens_details.accepted_prediction_tokens}"
-            details = True
-        if completion_tokens_details.rejected_prediction_tokens is not None and \
-                completion_tokens_details.rejected_prediction_tokens > 0:
-            if details:
-                text += ", "
-            text += f"prediction rejected: {completion_tokens_details.rejected_prediction_tokens}"
-            details = True
-        if completion_tokens_details.audio_tokens is not None and \
-                completion_tokens_details.audio_tokens > 0:
-            if details:
-                text += ", "
-            text += f"audio: {completion_tokens_details.audio_tokens}"
-            # details = True
-        text += ")"
-    # Return the formatted text
+    # Some OpenAI-compatible backends return a usage object without some of
+    # these fields (even the token totals): always use getattr with a default
+    text = "Prompt tokens: " + _format_token_count(getattr(usage, "prompt_tokens", None))
+    text += _format_token_details(
+        getattr(usage, "prompt_tokens_details", None),
+        [
+            ("audio_tokens", "audio"),
+            ("cached_tokens", "cached"),
+        ],
+    )
+    text += "\nCompletions tokens: " + _format_token_count(getattr(usage, "completion_tokens", None))
+    text += _format_token_details(
+        getattr(usage, "completion_tokens_details", None),
+        [
+            ("audio_tokens", "audio"),
+            ("reasoning_tokens", "reasoning"),
+            ("accepted_prediction_tokens", "prediction accepted"),
+            ("rejected_prediction_tokens", "prediction rejected"),
+        ],
+    )
     return text
 
 
@@ -380,7 +359,8 @@ class ChatCompletion(io.ComfyNode):
         # Handle usage stats as text preview
         stats = format_usage(completion.usage)
         # add it to the console following the openai http call log for now as previewtext does not work yet
-        print(stats)
+        if stats:
+            print(stats)
         # Return the response and the history and the stats for the UI
         return io.NodeOutput(
             content,
