@@ -39,8 +39,11 @@ Options nodes are available for:
 - `top_p`
 - `frequency_penalty`
 - `presence_penalty`
+- `reasoning_effort` (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`)
 - `developer_role`
 - `extra_body` (for any other key/value pair)
+
+`reasoning_effort` values supported depend on the backend and the model (e.g. gpt-oss only knows `low`, `medium` and `high`): an unsupported value may be rejected or ignored by the server, any other value can be sent with the `Extra body` node. `none` is sent literally as the `"none"` string, it is not the same as not using the node (which lets the model use its default): on vLLM, SGLang and llama.cpp it disables thinking for models whose chat template supports it.
 
 Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compatible servers keep using `max_tokens`. Newer OpenAI chat models that reject `max_tokens` use `max_completion_tokens`.
 
