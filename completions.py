@@ -1,6 +1,7 @@
 import base64
 from io import BytesIO
 import json
+import logging
 import time
 from typing import Any
 
@@ -8,6 +9,7 @@ import torch
 import numpy as np
 from PIL import Image
 from openai import OpenAI
+from openai.types.chat import ChatCompletion as ChatCompletionResponse
 from openai.types.completion_usage import CompletionUsage
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
@@ -15,6 +17,9 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 from comfy_api.latest import io, ui
 
 from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
+
+
+logger = logging.getLogger(__name__)
 
 
 def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
@@ -27,6 +32,32 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+def extract_response_content(completion: ChatCompletionResponse) -> str:
+    # Some backends or proxies answer with an HTTP 200 but no usable choice
+    choices = getattr(completion, "choices", None)
+    if not choices:
+        raise ValueError(
+            "the API returned no choices in its response (empty or missing "
+            "'choices' field): check the model name and the server logs")
+    choice = choices[0]
+    message = getattr(choice, "message", None)
+    if message is None:
+        raise ValueError("the API returned a choice without a message")
+    refusal = getattr(message, "refusal", None)
+    if refusal:
+        raise ValueError(f"the model refused to answer: {refusal}")
+    finish_reason = getattr(choice, "finish_reason", None)
+    content = getattr(message, "content", None)
+    if content is None:
+        # e.g. a reasoning model that spent its whole token budget thinking
+        # (finish_reason "length") or a tool call answer
+        logger.warning(
+            "the API returned no text content (finish_reason: %s), "
+            "using an empty response", finish_reason)
+        return ""
+    return content
 
 
 def format_usage(usage: CompletionUsage | None) -> str | None:
@@ -337,11 +368,13 @@ class ChatCompletion(io.ComfyNode):
         if extra_body:
             request_kwargs["extra_body"] = extra_body
         completion = client.chat.completions.create(**request_kwargs)
-        # Add the response to the history
+        content = extract_response_content(completion)
+        # Add the response to the history (content is never None here, a None
+        # assistant content would be rejected by the server on the next turn)
         messages.append(
             {
-                "role": completion.choices[0].message.role,
-                "content": completion.choices[0].message.content
+                "role": "assistant",
+                "content": content
             }
         )
         # Handle usage stats as text preview
@@ -350,7 +383,7 @@ class ChatCompletion(io.ComfyNode):
         print(stats)
         # Return the response and the history and the stats for the UI
         return io.NodeOutput(
-            completion.choices[0].message.content,
+            content,
             HistoryPayload(messages),
             ui=ui.PreviewText(stats) if stats else ui.PreviewText(""),
         )
