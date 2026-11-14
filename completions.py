@@ -213,6 +213,9 @@ class ChatCompletion(io.ComfyNode):
         top_p: float | None = None
         frequency_penalty: float | None = None
         presence_penalty: float | None = None
+        # A string: "none" is a real value that must be sent, only a Python
+        # None (no Reasoning Effort node) omits the field
+        reasoning_effort: str | None = None
         use_developer_role: bool = False
         developer_role_option_set: bool = False
         extra_body: dict[str, Any] = {}
@@ -239,6 +242,9 @@ class ChatCompletion(io.ComfyNode):
             if "presence_penalty" in extra_body:
                 presence_penalty = extra_body["presence_penalty"]
                 del extra_body["presence_penalty"]
+            if "reasoning_effort" in extra_body:
+                reasoning_effort = extra_body["reasoning_effort"]
+                del extra_body["reasoning_effort"]
             if "use_developer_role" in extra_body:
                 developer_role_option_set = True
                 use_developer_role = extra_body["use_developer_role"]
@@ -356,6 +362,8 @@ class ChatCompletion(io.ComfyNode):
             request_kwargs["frequency_penalty"] = frequency_penalty
         if presence_penalty is not None:
             request_kwargs["presence_penalty"] = presence_penalty
+        if reasoning_effort is not None:
+            request_kwargs["reasoning_effort"] = reasoning_effort
         if extra_body:
             request_kwargs["extra_body"] = extra_body
         completion = client.chat.completions.create(**request_kwargs)

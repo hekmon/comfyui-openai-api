@@ -357,6 +357,53 @@ class OptionPresencePenalty(io.ComfyNode):
         )
 
 
+class OptionReasoningEffort(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_ReasoningEffort",
+            display_name="OpenAI API - Reasoning Effort",
+            category="OpenAI API/Options",
+            description="Sets the reasoning effort of reasoning models: how much the model thinks before answering. Lower values give faster answers using fewer tokens.",
+            inputs=[
+                io.Combo.Input(
+                    id="reasoning_effort",
+                    display_name="Reasoning Effort",
+                    tooltip="Backends and models support different subsets of these values (e.g. gpt-oss: low/medium/high): an unsupported value may be rejected or ignored by the server. 'none' is sent literally as the \"none\" string (useful on vLLM to disable thinking on some models). Use the Extra Body node to send any other value.",
+                    options=["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+                    default="medium",
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Others options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                reasoning_effort: str,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {"reasoning_effort": reasoning_effort}
+        else:
+            options = other_options.get_options_copy()
+            options["reasoning_effort"] = reasoning_effort
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
+
+
 class OptionDeveloperRole(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
