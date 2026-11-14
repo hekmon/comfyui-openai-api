@@ -113,7 +113,7 @@ class LoadMemory(io.ComfyNode):
             node_id="OAIAPI_LoadMemory",
             display_name="OpenAI API - Load Memory",
             category="OpenAI API/Memory",
-            description="Returns a copy of the value stored under a key by a Save Memory node, usually during the previous queued run. Returns None (as if nothing was connected) when the key is empty or nothing is stored under it.",
+            description="Returns a copy of the value stored under a key by a Save Memory node, usually during the previous queued run. Returns the Default input, or None (as if nothing was connected) when the key is empty or nothing (or None) is stored under it.",
             inputs=[
                 io.String.Input(
                     id="key",
@@ -127,12 +127,18 @@ class LoadMemory(io.ComfyNode):
                     tooltip="Wipe the value stored under this key and return nothing for this run. Untick it afterwards, otherwise the key is reset on every run.",
                     default=False,
                 ),
+                io.AnyType.Input(
+                    id="default",
+                    display_name="Default",
+                    optional=True,
+                    tooltip="Optional value returned instead of None when the key is empty, missing, reset or holds None, e.g. on the first run of a loop when the output feeds a required input",
+                ),
             ],
             outputs=[
                 io.AnyType.Output(
                     id="value",
                     display_name="Value",
-                    tooltip="A copy of the stored value, or None if there is none",
+                    tooltip="A copy of the stored value, or the default input (None if not connected) if there is none",
                 ),
             ],
         )
@@ -151,12 +157,14 @@ class LoadMemory(io.ComfyNode):
         return MEMORY.version(normalize_key(key))
 
     @classmethod
-    def execute(cls, key: str, reset: bool) -> io.NodeOutput:
+    def execute(cls, key: str, reset: bool, default: Any = None) -> io.NodeOutput:
+        # default is None when not connected: same as returning nothing
         normalized_key = normalize_key(key)
         if normalized_key == "":
-            return io.NodeOutput(None)
+            return io.NodeOutput(default)
         if reset:
             MEMORY.wipe(normalized_key)
-            return io.NodeOutput(None)
+            return io.NodeOutput(default)
+        # A stored None counts as nothing stored, so default applies to it too
         _, value = MEMORY.load(normalized_key)
-        return io.NodeOutput(value)
+        return io.NodeOutput(default if value is None else value)
