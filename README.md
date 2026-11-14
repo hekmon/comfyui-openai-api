@@ -68,6 +68,25 @@ Example workflows (API format: open them with *Workflow > Open* or drag and drop
 - [`examples/memory_chat_loop_api.json`](examples/memory_chat_loop_api.json): a text only chat that remembers the conversation across queued runs. Change the prompt and queue again; tick `Reset` on the `Load Memory` node for one run to start a new conversation.
 - [`examples/memory_image_feedback_loop_api.json`](examples/memory_image_feedback_loop_api.json): a prompt writer generates the image prompt, a vision model critiques the generated image, and the next run writes an improved prompt from that critique. Pick your checkpoint in the `Load Checkpoint` node and use a vision capable model.
 
+## Unloading the model (local servers)
+
+The `Unload Model` node asks a local inference server to unload its model, e.g. to free VRAM before an image generation. Connect the output to unload after (usually the chat completion response) to its `Value` input: the node runs once that value is ready and passes it through unchanged. Connect the same client node as your chat completion node, no change needed (keep the usual `.../v1` base URL): its API key is reused, and the server root used by the native unload routes below is derived from the base URL automatically.
+
+- `Server Type`: pick your server, there is no "try every server" mode. `Model` is the model name, as in the chat completion node: required for llama.cpp, LM Studio and ollama.
+- `Timeout` (default 10 s) is specific to the unload request.
+- If the unload fails, a warning is logged and the value is still passed through; enable `Fail On Error` to stop the workflow instead.
+
+| Server | Unload call (from the server root) | Reload on the next request | Server side requirements |
+|---|---|---|---|
+| ollama | `POST /api/generate` with `keep_alive: 0` | yes, automatic | none |
+| LM Studio | `POST /api/v1/models/unload` | yes, with *Just-in-time model loading* (enabled by default) | the API token in `OPENAI_API_KEY` if authentication is enabled |
+| llama.cpp | `POST /models/unload` | yes, unless started with `--no-models-autoload` | router mode only: `llama-server` started without `-m` (`--models-dir`, `--models-preset` or the cache) |
+| tabbyAPI | `POST /v1/model/unload` | only with `inline_model_loading: true` in `config.yml`, and the model name of the chat completion must match a folder of its `model_dir` | an admin key in `OPENAI_API_KEY` (unload and inline loading both require it) |
+
+vLLM (sleep mode) and SGLang (memory release) are not supported: after their unload call the next request waits or fails until an explicit wake up / resume call, which would break the next generation.
+
+This node comes from the idea and the unload helper of [PR #11](https://github.com/hekmon/comfyui-openai-api/pull/11) by nikich340.
+
 ## API key
 
 The client node reads the API key from the `OPENAI_API_KEY` environment variable **at execution time**. It is intentionally impossible to enter an API key inside the workflow.
