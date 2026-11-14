@@ -1,0 +1,213 @@
+{
+  "1": {
+    "class_type": "OAIAPI_Client",
+    "_meta": {
+      "title": "Client (set your server Base URL)"
+    },
+    "inputs": {
+      "base_url": "http://localhost:11434/v1",
+      "max_retries": 2,
+      "timeout": 600
+    }
+  },
+  "2": {
+    "class_type": "OAIAPI_LoadMemory",
+    "_meta": {
+      "title": "Load Memory (previous prompt + critique)"
+    },
+    "inputs": {
+      "key": "image_feedback",
+      "reset": false
+    }
+  },
+  "3": {
+    "class_type": "OAIAPI_ChatCompletion",
+    "_meta": {
+      "title": "Prompt writer"
+    },
+    "inputs": {
+      "client": [
+        "1",
+        0
+      ],
+      "model": "your-model-name",
+      "force_regen": false,
+      "prompt": "Write an image generation prompt for: a cozy wooden cabin in a snowy forest at night. If the conversation already contains a critique of the previous image, use it to improve the previous prompt. Answer with the prompt only, no comment.",
+      "system_prompt": "You write concise prompts for a text to image diffusion model.",
+      "history": [
+        "2",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (pick yours)"
+    },
+    "inputs": {
+      "ckpt_name": "your_checkpoint.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive (generated prompt)"
+    },
+    "inputs": {
+      "text": [
+        "3",
+        0
+      ],
+      "clip": [
+        "10",
+        1
+      ]
+    }
+  },
+  "12": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative"
+    },
+    "inputs": {
+      "text": "blurry, low quality, watermark, text",
+      "clip": [
+        "10",
+        1
+      ]
+    }
+  },
+  "13": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    }
+  },
+  "14": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "10",
+        0
+      ],
+      "seed": 0,
+      "steps": 20,
+      "cfg": 7.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "positive": [
+        "11",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "13",
+        0
+      ],
+      "denoise": 1.0
+    }
+  },
+  "15": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "14",
+        0
+      ],
+      "vae": [
+        "10",
+        2
+      ]
+    }
+  },
+  "16": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "15",
+        0
+      ],
+      "filename_prefix": "memory_loop"
+    }
+  },
+  "4": {
+    "class_type": "OAIAPI_ChatCompletion",
+    "_meta": {
+      "title": "Image critic (needs a vision model)"
+    },
+    "inputs": {
+      "client": [
+        "1",
+        0
+      ],
+      "model": "your-model-name",
+      "force_regen": false,
+      "prompt": "Here is the image generated from the prompt you just wrote. Critique it briefly: what does not match the request, and what should the next prompt change?",
+      "system_prompt": "",
+      "history": [
+        "3",
+        1
+      ],
+      "images": [
+        "15",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "OAIAPI_TrimHistory",
+    "_meta": {
+      "title": "Trim History (limits stored images too)"
+    },
+    "inputs": {
+      "history": [
+        "4",
+        1
+      ],
+      "max_turns": 4
+    }
+  },
+  "6": {
+    "class_type": "OAIAPI_SaveMemory",
+    "_meta": {
+      "title": "Save Memory (for the next run)"
+    },
+    "inputs": {
+      "key": "image_feedback",
+      "value": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Prompt used"
+    },
+    "inputs": {
+      "source": [
+        "3",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Critique"
+    },
+    "inputs": {
+      "source": [
+        "4",
+        0
+      ]
+    }
+  }
+}
