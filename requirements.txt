@@ -1,4 +1,4 @@
-openai
+openai>=2.7.1,<4.0.0
 
 # Same as ComfyUI
 numpy>=1.25.0
