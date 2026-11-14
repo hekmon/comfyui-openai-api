@@ -44,6 +44,27 @@ Options nodes are available for:
 
 Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compatible servers keep using `max_tokens`. Newer OpenAI chat models that reject `max_tokens` use `max_completion_tokens`.
 
+### Trim History node
+
+Limits a history to its last `Max Turns` turns. The leading system/developer message is kept. A turn starts at a user message and includes the answers that follow it, so an exchange is never split and the first kept message (after the system one) is always a user message. An empty input (`None`) is passed through as is.
+
+## Memory (looping workflows)
+
+The `Save Memory` and `Load Memory` nodes carry a value from one queued run to the next: an answer, an image analysis, a whole conversation history... Typical loop: generate an image, analyse it with a chat completion, save the analysis (or the history), and on the next run load it to improve the next prompt.
+
+- `Save Memory` stores a copy of any value under a text `Key` and passes the value through. It runs on every queued prompt, even with nothing connected downstream.
+- `Load Memory` returns a copy of the value stored under its `Key`, or nothing (`None`, as if the input was not connected) when the key is empty or nothing is stored yet, e.g. on the first run. A stored `None` counts as nothing stored. Connect its optional `Default` input to return a value instead in that case: needed when the output goes into a required input, like a text concatenation.
+- `Load Memory` returns the value saved during the **previous** run: ComfyUI decides which nodes must run before executing any of them. While the stored value does not change, `Load Memory` and the nodes downstream stay cached.
+- If a `Save Memory` and a `Load Memory` use the same key but are not connected to each other (directly or not), their execution order in a run is undefined. Connect the loop as `Load Memory` -> ... -> `Save Memory`.
+- `Reset` wipes the key and returns nothing (or `Default`) for this run. **Untick it afterwards**, otherwise the key is wiped on every run.
+- The memory is a helper, not a database: it is kept in RAM only, shared by every prompt and workflow using the same key, and lost when ComfyUI restarts.
+- Stored histories grow with every run: put a `Trim History` node before `Save Memory`.
+
+Example workflows (API format: open them with *Workflow > Open* or drag and drop them in ComfyUI, then set the client `Base URL` and the model name):
+
+- [`examples/memory_chat_loop_api.json`](examples/memory_chat_loop_api.json): a text only chat that remembers the conversation across queued runs. Change the prompt and queue again; tick `Reset` on the `Load Memory` node for one run to start a new conversation.
+- [`examples/memory_image_feedback_loop_api.json`](examples/memory_image_feedback_loop_api.json): a prompt writer generates the image prompt, a vision model critiques the generated image, and the next run writes an improved prompt from that critique. Pick your checkpoint in the `Load Checkpoint` node and use a vision capable model.
+
 ## API key
 
 The client node reads the API key from the `OPENAI_API_KEY` environment variable **at execution time**. It is intentionally impossible to enter an API key inside the workflow.
