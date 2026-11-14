@@ -38,6 +38,7 @@ class Client(io.ComfyNode):
                     tooltip="Max number of retries for failed requests",
                     default=2,
                     min=0,
+                    max=10,
                 ),
                 io.Int.Input(
                     id="timeout",
@@ -45,6 +46,7 @@ class Client(io.ComfyNode):
                     tooltip="Request timeout in seconds",
                     default=600,
                     min=1,
+                    max=86400,  # explicit, otherwise the frontend caps it at 2048
                 ),
             ],
             outputs=[

@@ -18,6 +18,11 @@ class OptionSeed(io.ComfyNode):
                     id="seed",
                     display_name="Seed",
                     default=42,
+                    # Explicit bounds, otherwise the frontend applies a 0-2048
+                    # default range (and randomizes within it). 2^31-1 fits the
+                    # signed 32 bits seeds of every common backend.
+                    min=0,
+                    max=2**31 - 1,
                     control_after_generate=True,
                     display_mode=io.NumberDisplay.number,
                 ),
