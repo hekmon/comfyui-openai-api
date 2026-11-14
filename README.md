@@ -18,7 +18,7 @@ Multiples images are supported as long as they are fed batched to the chat compl
 
 ### Client node
 
-- `Base URL`: the OpenAI-compatible endpoint, e.g. `http://localhost:8000/v1` for a local server.
+- `Base URL`: the OpenAI-compatible endpoint **including its API path prefix**, usually `/v1`: the part before `/chat/completions`, as requests are sent to `<Base URL>/chat/completions` and nothing is added automatically. Examples: `http://localhost:8000/v1` (vLLM, SGLang, tabbyAPI...), `http://localhost:11434/v1` (ollama), `http://localhost:1234/v1` (LM Studio), `https://api.openai.com/v1`. Some providers use another prefix; llama.cpp also answers without `/v1` (e.g. `http://localhost:8080`). A trailing slash makes no difference.
 - `Max Retries` (0 to 10, default 2): how many times a failed request (connection error, timeout, HTTP 408/409/429/5xx) is retried by the OpenAI SDK, with an exponential backoff.
 - `Timeout` (seconds, default 600): maximum duration of a single request attempt. Raise it for slow local models generating long answers.
 

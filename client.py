@@ -28,7 +28,7 @@ class Client(io.ComfyNode):
                 io.String.Input(
                     id="base_url",
                     display_name="Base URL",
-                    tooltip="The base URL to use for the OpenAI API requests",
+                    tooltip="Base URL of the OpenAI-compatible API, including its path prefix (usually /v1): the part before /chat/completions, nothing is added automatically. Examples: http://localhost:8000/v1 (vLLM, SGLang, tabbyAPI...), http://localhost:11434/v1 (ollama), https://api.openai.com/v1. Some providers use another prefix, and llama.cpp also answers without /v1.",
                     placeholder="http(s)://host[:port][/URI]",
                     default="https://api.openai.com/v1"
                 ),
