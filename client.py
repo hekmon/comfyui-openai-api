@@ -16,6 +16,30 @@ from .iotypes import ParamClient
 _DEFAULT_KEYLESS_API_KEY = "-"
 
 
+def read_api_key() -> str:
+    """Read the API key from the OPENAI_API_KEY environment variable, falling
+    back to the keyless placeholder when it is unset or empty. The key ends up
+    in the Authorization HTTP header, which only accepts printable ASCII: fail
+    early with a clear message (never showing the value) instead of an
+    encoding error deep inside the HTTP client."""
+    # Surrounding whitespace (e.g. a trailing newline from a copy/paste) is
+    # never part of a key
+    api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+    if api_key == "":
+        return _DEFAULT_KEYLESS_API_KEY
+    invalid_at = next((i for i, c in enumerate(api_key) if not " " <= c <= "~"), None)
+    if invalid_at is not None:
+        raise ValueError(
+            "The OPENAI_API_KEY environment variable does not contain a valid API key: "
+            f"it is {len(api_key)} characters long and has a non ASCII or control character "
+            f"at position {invalid_at}, which an HTTP header can not carry (its value is not shown on purpose). "
+            "It probably holds pasted text instead of a key: check where it is set "
+            "(system or user environment variables, or the environment variables of your "
+            "ComfyUI Desktop installation) and restart ComfyUI."
+        )
+    return api_key
+
+
 class Client(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -74,9 +98,9 @@ class Client(io.ComfyNode):
     def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
         return io.NodeOutput(
             OpenAI(
-                # "or" (not a get() default) so an empty variable also falls
-                # back to the placeholder: the SDK rejects an empty key
-                api_key=os.environ.get("OPENAI_API_KEY") or _DEFAULT_KEYLESS_API_KEY,
+                # an empty variable also falls back to the placeholder: the SDK
+                # rejects an empty key
+                api_key=read_api_key(),
                 base_url=base_url,
                 max_retries=max_retries,
                 timeout=timeout
