@@ -213,6 +213,7 @@ class ChatCompletion(io.ComfyNode):
         frequency_penalty: float | None = None
         presence_penalty: float | None = None
         use_developer_role: bool = False
+        developer_role_option_set: bool = False
         extra_body: dict[str, Any] = {}
         if options is not None:
             extra_body = options.get_options_copy()
@@ -238,15 +239,17 @@ class ChatCompletion(io.ComfyNode):
                 presence_penalty = extra_body["presence_penalty"]
                 del extra_body["presence_penalty"]
             if "use_developer_role" in extra_body:
+                developer_role_option_set = True
                 use_developer_role = extra_body["use_developer_role"]
                 del extra_body["use_developer_role"]
         # Handle system prompt
         if history is not None:
             messages = history.get_msgs_copy()
+            first_msg_role = messages[0].get('role') if messages else None
+            has_instructions_msg = first_msg_role in ("system", "developer")
             if system_prompt is not None and system_prompt != "":
                 # Should we insert it at the beginning or replace the existing system message?
-                first_msg_role = messages[0].get('role')
-                if first_msg_role == "system" or first_msg_role == "developer":
+                if has_instructions_msg:
                     # Replace the existing system message
                     if use_developer_role:
                         messages[0] = {
@@ -270,6 +273,14 @@ class ChatCompletion(io.ComfyNode):
                             "role": "system",  # need literal for type hint check
                             "content": system_prompt,
                         })
+            elif has_instructions_msg and developer_role_option_set:
+                # No new instructions but the Developer Role option is explicitly
+                # set: convert the existing instructions message role to match it.
+                # Build a new dict, the history messages are shared with the
+                # (cached) upstream node output and must not be mutated.
+                wanted_role = "developer" if use_developer_role else "system"
+                if first_msg_role != wanted_role:
+                    messages[0] = {**messages[0], "role": wanted_role}
         else:
             messages: list[ChatCompletionMessageParam] = []
             if system_prompt:
