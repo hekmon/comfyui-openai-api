@@ -263,7 +263,7 @@ class OptionFrequencyPenalty(io.ComfyNode):
             inputs=[
                 io.Float.Input(
                     id="frequency_penalty",
-                    display_name="Top P",
+                    display_name="Frequency Penalty",
                     tooltip="Number between -2.0 and 2.0",
                     default=0.0,
                     min=-2.0,
@@ -313,7 +313,7 @@ class OptionPresencePenalty(io.ComfyNode):
             inputs=[
                 io.Float.Input(
                     id="presence_penalty",
-                    display_name="Top P",
+                    display_name="Presence Penalty",
                     tooltip="Number between -2.0 and 2.0",
                     default=0.0,
                     min=-2.0,
