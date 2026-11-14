@@ -12,15 +12,31 @@ jobs:
   publish-node:
     name: Publish Custom Node to registry
     runs-on: ubuntu-latest
-    # Skip publishing for pre-release tags (e.g. v3.0.0-rc1): the registry has no
+    # Tag pushes skip pre-release tags (e.g. v3.0.0-rc1): the registry has no
     # prerelease concept and would serve it as the default install for all users.
-    # Re-enable via workflow_dispatch if a prerelease publish is ever wanted.
-    if: ${{ github.repository_owner == 'hekmon' && !contains(github.ref, '-') }}
+    # A manual workflow_dispatch run always proceeds (from a branch or any tag),
+    # so a prerelease can still be published on purpose.
+    if: >-
+      github.repository_owner == 'hekmon' &&
+      (github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-'))
     steps:
       - name: Check out code
         uses: actions/checkout@v4
         with:
           submodules: true
+      # The registry publishes the version from pyproject.toml, not the tag name:
+      # refuse to publish when they differ (e.g. a forgotten version bump) as
+      # registry versions cannot be overwritten. Runs for any tag ref, including
+      # manual runs on a tag.
+      - name: Check tag matches pyproject version
+        if: github.ref_type == 'tag'
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pyproject_version="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$tag_version" != "$pyproject_version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${pyproject_version}"
+            exit 1
+          fi
       - name: Publish Custom Node
         uses: Comfy-Org/publish-node-action@v1
         with:
