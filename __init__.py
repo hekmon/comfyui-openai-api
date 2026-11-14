@@ -3,6 +3,7 @@ from comfy_api.latest import ComfyExtension, io
 
 from .client import Client
 from .completions import ChatCompletion
+from .history import TrimHistory
 from .memory import SaveMemory, LoadMemory
 from .options import OptionSeed, OptionTemperature, OptionMaxTokens, OptionMaxCompletionTokens, OptionTopP, OptionFrequencyPenalty, OptionPresencePenalty, OptionExtraBody, OptionDeveloperRole
 
@@ -22,6 +23,7 @@ class OpenAIAPIExtension(ComfyExtension):
             OptionPresencePenalty,
             OptionDeveloperRole,
             OptionExtraBody,
+            TrimHistory,
             SaveMemory,
             LoadMemory,
         ]
