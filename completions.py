@@ -191,7 +191,7 @@ class ChatCompletion(io.ComfyNode):
                 system_prompt: str | None = None,
                 history: HistoryPayload | None = None,
                 options: OptionsPayload | None = None,
-                images: list[torch.Tensor] | None = None,
+                images: torch.Tensor | None = None,
                 force_regen: bool = False,
                 ) -> io.NodeOutput:
         # Handle options
@@ -275,9 +275,10 @@ class ChatCompletion(io.ComfyNode):
                     })
         # Handle user message
         if images is not None:
-            # Build multi modal content
+            # Build multi modal content: every image of the batch, then the
+            # prompt once (it must not be repeated for each image)
             content: list[ChatCompletionContentPartParam] = []
-            for image in images:
+            for image in images:  # iterating a [B,H,W,C] tensor yields [H,W,C] images
                 content.append(
                     {
                         "type": "image_url",
@@ -286,12 +287,12 @@ class ChatCompletion(io.ComfyNode):
                         }
                     }
                 )
-                content.append(
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                )
+            content.append(
+                {
+                    "type": "text",
+                    "text": prompt
+                }
+            )
             # Add the multi-modal content to the messages list
             messages.append(
                 {
