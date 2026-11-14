@@ -417,10 +417,9 @@ class OptionExtraBody(io.ComfyNode):
                 io.String.Input(
                     id="extra_body",
                     display_name="Extra Body",
-                    tooltip="Extra body content to include in the request",
+                    tooltip="Extra body content to include in the request, as a JSON object. Keys are merged into the request body and override the ones set by upstream option nodes (e.g. a \"seed\" key here overrides the Seed node). Example: {\"top_k\": 40, \"repetition_penalty\": 1.1}",
                     multiline=True,
-                    default=json.dumps(
-                        {"repetition_penalty": 0.5, "seed": 42}, indent=4),
+                    default="{}",
                 ),
                 ParamOptions.Input(
                     id="other_options",
