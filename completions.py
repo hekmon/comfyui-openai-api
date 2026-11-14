@@ -1,6 +1,5 @@
 import base64
 from io import BytesIO
-import json
 import logging
 import time
 from typing import Any
@@ -124,7 +123,7 @@ class ChatCompletion(io.ComfyNode):
                 io.Boolean.Input(
                     id="force_regen",
                     display_name="Force Regen",
-                    tooltip="Set to true to always request a new text generation even if no widget input values have changed (no cache)",
+                    tooltip="Set to true to always request a new text generation even if no widget input values have changed (no cache). If this input is linked to another node, the generation always runs again as its value is not known when ComfyUI checks the cache.",
                     default=False,
                 ),
                 io.String.Input(
@@ -185,13 +184,15 @@ class ChatCompletion(io.ComfyNode):
 
     @classmethod
     def fingerprint_inputs(cls, **kwargs) -> str:
+        # ComfyUI already includes every widget value and upstream link in the
+        # cache key, this fingerprint only has to break the cache when needed.
+        # A linked force_regen is received as None here: its value is not known
+        # yet at fingerprinting time, so err on the side of regenerating.
+        if "force_regen" in kwargs and kwargs["force_regen"] is None:
+            return str(time.time())  # linked input: always refresh
         if kwargs.get("force_regen"):
             return str(time.time())  # Use timestamp for always refresh
-        else:
-            # Return a sorted key sorted JSON string of the inputs for fingerprinting
-            # Remove force_regen as it will always be False in this path
-            kwargs.pop("force_regen")
-            return json.dumps(kwargs, sort_keys=True, separators=(',', ':'))
+        return ""  # constant: let the regular ComfyUI cache apply
 
     @classmethod
     def execute(cls,
