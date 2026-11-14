@@ -1,12 +1,14 @@
 import base64
 from io import BytesIO
 import logging
+import re
 import time
 from typing import Any
 
 import torch
 import numpy as np
 from PIL import Image
+import openai
 from openai import OpenAI
 from openai.types.chat import ChatCompletion as ChatCompletionResponse
 from openai.types.completion_usage import CompletionUsage
@@ -31,6 +33,59 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+_STATUS_HINTS = {
+    401: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
+    403: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
+    404: "the Base URL probably lacks the API prefix (usually /v1)",
+    405: "the Base URL probably lacks the API prefix (usually /v1)",
+}
+
+
+def _redact(text: str, client: OpenAI) -> str:
+    # Some servers echo the received credentials in their error answer
+    api_key = getattr(client, "api_key", None)
+    if isinstance(api_key, str) and len(api_key) > 3:
+        text = text.replace(api_key, "***")
+    return text
+
+
+def _response_body_snippet(response: Any, max_len: int = 300) -> str:
+    try:
+        text = response.text
+    except Exception:
+        return ""
+    content_type = response.headers.get("content-type", "").lower()
+    if "html" in content_type or text.lstrip()[:15].lower().startswith(("<!doctype html", "<html")):
+        title = re.search(r"<title[^>]*>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
+        title_text = " ".join(title.group(1).split())[:100] if title else ""
+        return f'HTML page "{title_text}"' if title_text else "HTML page"
+    text = " ".join(text.split())
+    return text[:max_len] + ("..." if len(text) > max_len else "")
+
+
+def describe_api_error(err: Exception, client: OpenAI) -> str:
+    """A clear error message for a failed request: method, URL, status, an
+    excerpt of the answer and a hint. Never includes the request headers."""
+    if isinstance(err, openai.APIStatusError):
+        request = err.response.request
+        status = err.status_code
+        message = f"the server answered HTTP {status} to {request.method} {request.url}"
+        snippet = _response_body_snippet(err.response)
+        if snippet:
+            message += f" ({snippet})"
+        hint = _STATUS_HINTS.get(status)
+        if hint is not None:
+            if status in (404, 405):
+                hint += f": the request went to {request.url}"
+            message += f". Hint: {hint}"
+        return _redact(message, client)
+    if isinstance(err, openai.APIConnectionError):
+        reason = err.__cause__ or err.__context__ or err
+        kind = "timed out" if isinstance(err, openai.APITimeoutError) else "failed"
+        return _redact(f"cannot reach {client.base_url}: the connection {kind} ({type(reason).__name__}: {reason})", client)
+    return _redact(str(err), client)
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> str:
@@ -366,7 +421,15 @@ class ChatCompletion(io.ComfyNode):
             request_kwargs["reasoning_effort"] = reasoning_effort
         if extra_body:
             request_kwargs["extra_body"] = extra_body
-        completion = client.chat.completions.create(**request_kwargs)
+        try:
+            completion = client.chat.completions.create(**request_kwargs)
+        except (openai.APIStatusError, openai.APIConnectionError) as err:
+            # The chained original exception is printed in the ComfyUI log:
+            # strip any echoed credentials from it too
+            err.args = tuple(_redact(a, client) if isinstance(a, str) else a for a in err.args)
+            if isinstance(getattr(err, "message", None), str):
+                err.message = _redact(err.message, client)
+            raise RuntimeError(f"Chat completion request failed: {describe_api_error(err, client)}") from err
         content = extract_response_content(completion)
         # Add the response to the history (content is never None here, a None
         # assistant content would be rejected by the server on the next turn)

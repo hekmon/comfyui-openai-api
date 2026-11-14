@@ -1,3 +1,4 @@
+import logging
 import os
 from urllib.parse import urlparse
 
@@ -14,6 +15,11 @@ from .iotypes import ParamClient
 # (vLLM, etc) working: they require an Authorization header but do not
 # validate its value.
 _DEFAULT_KEYLESS_API_KEY = "-"
+
+logger = logging.getLogger(__name__)
+
+# Base URLs already warned about, to log the missing prefix warning only once
+_warned_base_urls: set[str] = set()
 
 
 def read_api_key() -> str:
@@ -96,6 +102,13 @@ class Client(io.ComfyNode):
 
     @classmethod
     def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
+        # No API prefix at all: fine for llama.cpp, a 404/405 for most other
+        # servers. Only a warning (once per URL), never added automatically.
+        if urlparse(base_url).path in ("", "/") and base_url not in _warned_base_urls:
+            _warned_base_urls.add(base_url)
+            logger.warning(
+                "OpenAI API client: the base URL %s has no API path prefix (usually /v1). "
+                "This works with llama.cpp, most other servers expect .../v1", base_url)
         return io.NodeOutput(
             OpenAI(
                 # an empty variable also falls back to the placeholder: the SDK
