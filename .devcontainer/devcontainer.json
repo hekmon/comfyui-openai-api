@@ -7,7 +7,7 @@
     "build": {
         "dockerfile": "Dockerfile",
         "args": {
-            // ComfyUI release tag, e.g. "v0.3.48" (minimum supported version).
+            // ComfyUI release tag, e.g. "v0.10.0" (minimum supported version).
             // Empty: latest release. Rebuild the container after changing it.
             "COMFYUI_VERSION": ""
         }

@@ -118,6 +118,8 @@ If you have used a version of this project prior to v3.0.0 with a real key and s
 
 ## Installation
 
+Requires ComfyUI 0.10.0 or later.
+
 ### ComfyUI Manager
 
 Search for `OpenAI API` in the `Custom Nodes Manager` and install it.

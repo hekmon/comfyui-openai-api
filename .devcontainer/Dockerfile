@@ -1,7 +1,7 @@
 # Python 3.13: the version ComfyUI recommends (the extension supports >= 3.10).
 FROM mcr.microsoft.com/devcontainers/python:3-3.13-trixie
 
-# ComfyUI release tag to install, e.g. v0.3.48 (the minimum supported version).
+# ComfyUI release tag to install, e.g. v0.10.0 (the minimum supported version).
 # Empty means the latest stable release: vX.Y.Z tags only, so peeled refs, the
 # "latest" tag and pre-releases are ignored. Docker caches this step: rebuild
 # without cache to pick up a newer release.
@@ -24,7 +24,7 @@ WORKDIR /ComfyUI
 # instead of pulling the CUDA wheels (several GB) from PyPI. The CPU index stays
 # available to the second step in case a dependency forces a torch reinstall,
 # and the build fails if a CUDA torch got installed anyway.
-# Older releases (e.g. v0.3.48) need torchaudio, and import requests without
+# Older releases (e.g. v0.10.0) need torchaudio, and import requests without
 # listing it in their requirements.
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir --upgrade pip \
