@@ -74,13 +74,17 @@ def _connection_error_reason(err: BaseException) -> BaseException:
     return first
 
 
-def describe_api_error(err: Exception, client: AsyncOpenAI) -> str:
+def describe_api_error(err: Exception, client: AsyncOpenAI, hints: dict[int, str] | None = None) -> str:
     """A clear error message for a failed request: method, URL, status, an
-    excerpt of the answer and a hint. Never includes the request headers."""
+    excerpt of the answer and a hint (hints: replacements for the default
+    ones, by HTTP status). Never includes the request headers."""
     if isinstance(err, openai.APIStatusError):
         request = err.response.request
         status = err.status_code
         message = f"the server answered HTTP {status} to {request.method} {request.url}"
+        if 300 <= status < 400:
+            # Only for requests sent without following redirects
+            message += f", a redirect to {err.response.headers.get('location', '?')} that was not followed"
         snippet = _response_body_snippet(err.response)
         if snippet:
             message += f" ({snippet})"
@@ -92,6 +96,10 @@ def describe_api_error(err: Exception, client: AsyncOpenAI) -> str:
                 hint = "the Base URL probably lacks the API prefix (usually /v1)"
             else:
                 hint = "check the model name and the Base URL"
+        if 300 <= status < 400:
+            hint = "check the Base URL"
+        if hints and status in hints:
+            hint = hints[status]
         if hint is not None:
             message += f". Hint: {hint}"
         return redact(message, client)

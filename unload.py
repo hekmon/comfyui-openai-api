@@ -1,14 +1,15 @@
-import json
 import logging
-import urllib.error
-import urllib.request
 from typing import Any
 
+import comfy.model_management
+import openai
 from openai import AsyncOpenAI
 
 from comfy_api.latest import io
 
-from .client import redact
+from . import aioloop
+from .completions import describe_api_error
+from .interrupt import run_interruptible
 from .iotypes import ParamClient
 
 
@@ -48,45 +49,58 @@ def unload_request_body(server_type: str, model: str) -> dict[str, Any] | None:
     return None  # tabbyAPI: unloads the loaded model, no body
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Never follow redirects: urllib would forward the Authorization header
-    (the API key) to any host, turn the POST into a GET and could report a
-    success for an unload that never happened. A 3xx is raised as an error."""
+def _unload_hints(server_type: str) -> dict[int, str]:
+    """Hints for the HTTP errors of an unload call (see describe_api_error)."""
+    auth = "authentication refused: check OPENAI_API_KEY"
+    if server_type == "tabbyAPI":
+        auth += " (tabbyAPI requires an admin key to unload)"
+    route = f"check the Server Type ({server_type}), the model name and the Base URL"
+    if server_type == "llama.cpp (router mode)":
+        route += " (llama.cpp only has this route in router mode)"
+    return {401: auth, 403: auth, 404: route, 405: route}
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
 
-
-_OPENER = urllib.request.build_opener(_NoRedirect)
-
-
-def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeout: float) -> None:
+async def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeout: float) -> None:
     """Ask a local inference server to unload its model. Raises on failure.
-    Based on the unload_localhosted_models helper of PR #11 by nikich340."""
+    Based on the unload_localhosted_models helper of PR #11 by nikich340.
+
+    Sent by the client itself (same headers, proxies and connection pool as
+    the chat completions: an open connection to the server is reused), on the
+    API client loop where it lives, so that Cancel stops it at once."""
     method, path, _ = SERVER_TYPES[server_type]
-    url = server_root(str(client.base_url)) + path
-    headers = {"Authorization": f"Bearer {client.api_key}"}
+    url = server_root(str(client.base_url)) + path  # absolute: not joined to the base URL
     body = unload_request_body(server_type, model)
-    data = None
-    if body is not None:
-        data = json.dumps(body).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(url, data=data, headers=headers, method=method)
+    options: dict[str, Any] = {
+        "timeout": timeout,
+        # An unload is never retried silently, whatever the client Max Retries
+        "max_retries": 0,
+        # Never follow redirects: the Authorization header (the API key) must
+        # only go to the base URL host, and a redirected request could report
+        # a success for an unload that never happened. A 3xx is an error.
+        "follow_redirects": False,
+    }
+    if body is None:
+        # No body (tabbyAPI): no JSON Content-Type either
+        options["headers"] = {"Content-Type": openai.Omit()}
+    # cast_to=str: the answer is only read as text, never parsed: unload routes
+    # may answer with an empty body or plain text
+    if method == "POST":
+        request = client.post(url, cast_to=str, body=body, options=options)  # type: ignore[arg-type]
+    else:
+        request = client.get(url, cast_to=str, options=options)  # type: ignore[arg-type]
     try:
-        with _OPENER.open(request, timeout=timeout) as response:
-            status = response.status
-    except urllib.error.HTTPError as e:
-        # Only the start of the server answer: never the request headers. The
-        # key is still stripped from it, some servers echo the credentials.
-        detail = e.read(300).decode("utf-8", errors="replace").strip()
-        if 300 <= e.code < 400:
-            detail = f"redirect to {e.headers.get('Location', '?')} refused, check the base URL"
-        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): HTTP {e.code} {detail}", client)) from None
-    except (urllib.error.URLError, OSError) as e:
-        reason = getattr(e, "reason", e)
-        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): {reason}", client)) from None
-    if not 200 <= status < 300:
-        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): HTTP {status}", client))
+        await run_interruptible(aioloop.submit(request))
+    except openai.APITimeoutError:
+        raise RuntimeError(f"{server_type} unload failed ({method} {url}): no answer within {timeout} s") from None
+    except openai.APIError as err:
+        # The message never includes the request headers, and strips the key
+        # from the server answer (some servers echo the credentials). Not
+        # chained: the original exception could still hold it.
+        detail = describe_api_error(err, client, hints=_unload_hints(server_type))
+        if isinstance(err, openai.APIStatusError):
+            # the description already has the method and URL
+            raise RuntimeError(f"{server_type} unload failed: {detail}") from None
+        raise RuntimeError(f"{server_type} unload failed ({method} {url}): {detail}") from None
 
 
 class UnloadModel(io.ComfyNode):
@@ -157,20 +171,24 @@ class UnloadModel(io.ComfyNode):
         return True
 
     @classmethod
-    def execute(cls,
-                value: Any,
-                client: AsyncOpenAI,
-                server_type: str,
-                model: str,
-                timeout: float,
-                fail_on_error: bool,
+    async def execute(cls,
+                      value: Any,
+                      client: AsyncOpenAI,
+                      server_type: str,
+                      model: str,
+                      timeout: float,
+                      fail_on_error: bool,
                 ) -> io.NodeOutput:
         model = (model or "").strip()
         try:
             if SERVER_TYPES[server_type][2] and model == "":
                 raise ValueError(f"model is required to unload from {server_type}")
-            unload_model(client, server_type, model, timeout)
+            await unload_model(client, server_type, model, timeout)
             logger.info("%s: model %s unloaded", server_type, model or "(current)")
+        except comfy.model_management.InterruptProcessingException:
+            # An Exception subclass in older ComfyUI versions: never turn a
+            # Cancel into a warning
+            raise
         except Exception as e:
             if fail_on_error:
                 raise
