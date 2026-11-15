@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from comfy_api.latest import io
 
@@ -484,21 +485,34 @@ class OptionExtraBody(io.ComfyNode):
             ],
         )
 
-    @classmethod
-    def validate_inputs(cls, extra_body: str) -> bool | str:
+    @staticmethod
+    def check_extra_body(extra_body: Any) -> str | None:
+        """The error message for an invalid extra body, None if valid."""
+        if not isinstance(extra_body, str):
+            return f"extra body must be a text, not {type(extra_body).__name__}"
         try:
             data = json.loads(extra_body)
-            if not isinstance(data, dict):
-                return "extra body must be a JSON object (dictionary)"
         except json.JSONDecodeError as e:
             return f"extra body is not a valid JSON: {e}"
-        return True
+        if not isinstance(data, dict):
+            return "extra body must be a JSON object (dictionary)"
+        return None
+
+    @classmethod
+    def validate_inputs(cls, extra_body: str | None) -> bool | str:
+        # None when coming from another node: checked at execution
+        if extra_body is None:
+            return True
+        return cls.check_extra_body(extra_body) or True
 
     @classmethod
     def execute(cls,
                 extra_body: str,
                 other_options: OptionsPayload | None = None,
                 ) -> io.NodeOutput:
+        error = cls.check_extra_body(extra_body)
+        if error is not None:
+            raise ValueError(f"Extra Body: {error}")
         if other_options is None:
             options = json.loads(extra_body)
         else:
