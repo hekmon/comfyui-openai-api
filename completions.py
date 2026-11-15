@@ -22,7 +22,8 @@ from comfy_api.latest import io, ui
 from . import aioloop
 from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
-from .iotypes import INSTRUCTIONS_ROLES, ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload, check_history
+from .iotypes import (INSTRUCTIONS_ROLES, ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload,
+                      check_client, check_history, check_input, check_options)
 
 
 logger = logging.getLogger(__name__)
@@ -186,13 +187,7 @@ def _build_messages(history: HistoryPayload | None, system_prompt: str | None,
     Developer Role option."""
     messages = history.get_msgs_copy() if history is not None else []
     has_instructions = bool(messages) and messages[0].get("role") in INSTRUCTIONS_ROLES
-    # Same test for every text value. Non text values (from a link) differ
-    # between both cases for now.
-    if history is not None:
-        has_system_prompt = system_prompt is not None and system_prompt != ""
-    else:
-        has_system_prompt = bool(system_prompt)
-    if has_system_prompt:
+    if system_prompt:
         instructions = _instructions_message(system_prompt, bool(options.use_developer_role))
         if has_instructions:
             messages[0] = instructions
@@ -330,7 +325,10 @@ class ChatCompletion(io.ComfyNode):
             raise ValueError(
                 "Chat Completion: the prompt is empty (or not a text). If it comes from a "
                 "Load Memory node, connect its Default input for the first run.")
+        check_input(system_prompt, str, "System Prompt", "a text", "Chat Completion")
         check_history(history, "Chat Completion")
+        check_options(options, "Chat Completion")
+        check_client(client, "Chat Completion")
         request_options = _split_options(options)
         # Never send both token limits at once. Checked before encoding the
         # images, which can take a while.

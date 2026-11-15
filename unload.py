@@ -12,7 +12,7 @@ from comfy_api.latest import io
 from . import aioloop
 from .apierrors import describe_api_error
 from .interrupt import run_interruptible
-from .iotypes import ParamClient
+from .iotypes import ParamClient, check_client
 
 
 logger = logging.getLogger(__name__)
@@ -195,6 +195,7 @@ class UnloadModel(io.ComfyNode):
                 ) -> io.NodeOutput:
         model = (model or "").strip()
         try:
+            check_client(client, "Unload Model")
             error = check_unload_inputs(server_type, model)
             if error is not None:
                 raise ValueError(error)

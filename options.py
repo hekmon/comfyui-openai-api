@@ -3,7 +3,7 @@ from typing import Any
 
 from comfy_api.latest import io
 
-from .iotypes import ParamOptions, OptionsPayload
+from .iotypes import ParamOptions, OptionsPayload, check_options
 
 
 def _option_schema(node_id: str, display_name: str, description: str, value: io.Input) -> io.Schema:
@@ -47,6 +47,7 @@ class _SetOption(io.ComfyNode):
     def execute(cls, *, other_options: OptionsPayload | None = None, **inputs: Any) -> io.NodeOutput:
         # ComfyUI passes the inputs by name: the only one left is the value input
         ((input_id, value),) = inputs.items()
+        check_options(other_options, cls.define_schema().display_name.removeprefix("OpenAI API - "))
         options = {} if other_options is None else other_options.get_options_copy()
         options[cls.KEY or input_id] = value
         return io.NodeOutput(
@@ -280,6 +281,7 @@ class OptionExtraBody(io.ComfyNode):
         error = cls.check_extra_body(extra_body)
         if error is not None:
             raise ValueError(f"Extra Body: {error}")
+        check_options(other_options, "Extra Body")
         if other_options is None:
             options = json.loads(extra_body)
         else:
