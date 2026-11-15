@@ -50,6 +50,13 @@ SERVER_TYPES: dict[str, ServerType] = {
         "/api/generate", needs_model=True,
         # an empty prompt with keep_alive 0 unloads the model
         body=lambda model: {"model": model, "keep_alive": 0}),
+    # Same call as the llama.cpp router (Studio serves llama-server compatible
+    # model management routes), listed apart so that users find it
+    "Unsloth Studio": ServerType(
+        "/models/unload", needs_model=True,
+        body=lambda model: {"model": model},
+        auth_hint=" (Unsloth Studio expects one of its sk-unsloth-... API keys)",
+        route_hint=" (Unsloth Studio has this route since October 2026: update it)"),
 }
 
 
@@ -150,12 +157,12 @@ class UnloadModel(io.ComfyNode):
                     display_name="Server Type",
                     options=list(SERVER_TYPES.keys()),
                     default="ollama",
-                    tooltip="The inference server software. tabbyAPI: needs an admin key in OPENAI_API_KEY, and reloads on the next request only with inline_model_loading: true in its config.yml (and an admin key). llama.cpp: only in router mode (llama-server started without -m), reloads on demand unless --no-models-autoload. LM Studio: reloads on demand with JIT loading enabled (default). ollama: reloads on demand.",
+                    tooltip="The inference server software. tabbyAPI: needs an admin key in OPENAI_API_KEY, and reloads on the next request only with inline_model_loading: true in its config.yml (and an admin key). llama.cpp: only in router mode (llama-server started without -m), reloads on demand unless --no-models-autoload. LM Studio: reloads on demand with JIT loading enabled (default). ollama: reloads on demand. Unsloth Studio: needs a Studio API key (sk-unsloth-...) in OPENAI_API_KEY and a version from October 2026 or later, reloads on demand only with the OpenAI API model auto-switch setting enabled (off by default).",
                 ),
                 io.String.Input(
                     id="model",
                     display_name="Model",
-                    tooltip="The model to unload, same name as in the chat completion node. Required for llama.cpp, LM Studio and ollama, ignored by tabbyAPI (unloads its only model).",
+                    tooltip="The model to unload, same name as in the chat completion node. Required for llama.cpp, LM Studio, ollama and Unsloth Studio, ignored by tabbyAPI (unloads its only model).",
                     default="",
                 ),
                 io.Float.Input(
