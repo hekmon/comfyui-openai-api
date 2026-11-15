@@ -1,3 +1,4 @@
+import contextlib
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -20,12 +21,43 @@ def redact(text: str, client: AsyncOpenAI) -> str:
     return text
 
 
-def scrub_exception(err: openai.APIError, client: AsyncOpenAI) -> None:
-    """Strip the client API key from an SDK exception, in place, before it is
-    chained to another one: ComfyUI prints the chained exception in its log."""
-    err.args = tuple(redact(a, client) if isinstance(a, str) else a for a in err.args)
-    if isinstance(getattr(err, "message", None), str):
-        err.message = redact(err.message, client)
+def _redact_value(value: Any, client: AsyncOpenAI) -> Any:
+    # Texts, also inside the parsed JSON of an error body
+    if isinstance(value, str):
+        return redact(value, client)
+    if isinstance(value, dict):
+        return {k: _redact_value(v, client) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_value(v, client) for v in value]
+    return value
+
+
+# Exception attributes that hold texts: the SDK message and parsed error
+# body, the OSError fields shown by str()
+_SCRUBBED_ATTRIBUTES = ("message", "body", "strerror", "filename", "filename2")
+
+
+def scrub_exception(err: BaseException, client: AsyncOpenAI) -> None:
+    """Strip the client API key, in place, from an exception and from every
+    exception it is chained to (__cause__ and __context__, e.g. the HTTP
+    client error below an SDK one). Done before raising it again or chaining
+    it to the node error: ComfyUI prints the whole chain in its log. The raw
+    HTTP request and response objects are left as they are: never printed."""
+    seen: set[int] = set()
+    pending: list[BaseException | None] = [err]
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        current.args = tuple(_redact_value(a, client) for a in current.args)
+        for attr in _SCRUBBED_ATTRIBUTES:
+            value = getattr(current, attr, None)
+            redacted = _redact_value(value, client)
+            if redacted != value:
+                with contextlib.suppress(AttributeError, TypeError):  # read-only
+                    setattr(current, attr, redacted)
+        pending += [current.__cause__, current.__context__]
 
 
 def _response_body_snippet(response: Any, max_len: int = 300) -> str:

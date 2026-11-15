@@ -358,11 +358,16 @@ class ChatCompletion(io.ComfyNode):
             # connections are shared with the other nodes using this client
             completion = await run_interruptible(
                 aioloop.submit(client.chat.completions.create(**request_kwargs)))
-        except (openai.APIStatusError, openai.APIConnectionError) as err:
-            # The chained original exception is printed in the ComfyUI log:
-            # strip any echoed credentials from it too
+        except openai.APIError as err:
+            # The chained original exceptions are printed in the ComfyUI log:
+            # strip any echoed credentials from them too
             scrub_exception(err, client)
             raise RuntimeError(f"Chat completion request failed: {describe_api_error(err, client)}") from err
+        except Exception as err:
+            # Not an SDK error (a Cancel, a bug below the SDK...): raised as
+            # is, only without the credentials
+            scrub_exception(err, client)
+            raise
         content = extract_response_content(completion)
         # Add the response to the history (content is never None here, a None
         # assistant content would be rejected by the server on the next turn)

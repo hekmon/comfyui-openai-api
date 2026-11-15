@@ -10,7 +10,7 @@ from openai import AsyncOpenAI
 from comfy_api.latest import io
 
 from . import aioloop
-from .apierrors import describe_api_error
+from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
 from .iotypes import ParamClient, check_client, check_input
 
@@ -104,17 +104,25 @@ async def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeou
     request = client.post(url, cast_to=str, body=body, options=options)  # type: ignore[arg-type]
     try:
         await run_interruptible(aioloop.submit(request))
-    except openai.APITimeoutError:
-        raise RuntimeError(f"{server_type} unload failed (POST {url}): no answer within {timeout} s") from None
     except openai.APIError as err:
-        # The message never includes the request headers, and strips the key
-        # from the server answer (some servers echo the credentials). Not
-        # chained: the original exception could still hold it.
-        detail = describe_api_error(err, client, hints=_unload_hints(server_type))
-        if isinstance(err, openai.APIStatusError):
+        # Same as Chat Completion: the message never includes the request
+        # headers and strips the key from the server answer (some servers
+        # echo the credentials), as does scrub_exception from the chained
+        # original exceptions, printed in the ComfyUI log.
+        scrub_exception(err, client)
+        if isinstance(err, openai.APITimeoutError):
+            reason = f" (POST {url}): no answer within {timeout} s"
+        elif isinstance(err, openai.APIStatusError):
             # the description already has the method and URL
-            raise RuntimeError(f"{server_type} unload failed: {detail}") from None
-        raise RuntimeError(f"{server_type} unload failed (POST {url}): {detail}") from None
+            reason = ": " + describe_api_error(err, client, hints=_unload_hints(server_type))
+        else:
+            reason = f" (POST {url}): " + describe_api_error(err, client, hints=_unload_hints(server_type))
+        raise RuntimeError(f"{server_type} unload failed{reason}") from err
+    except Exception as err:
+        # Not an SDK error (a Cancel, a bug below the SDK...): raised as is,
+        # only without the credentials
+        scrub_exception(err, client)
+        raise
 
 
 class UnloadModel(io.ComfyNode):
