@@ -1,10 +1,8 @@
 import base64
 from io import BytesIO
 import logging
-import re
 import time
 from typing import Any
-from urllib.parse import urlparse
 
 import torch
 import numpy as np
@@ -19,7 +17,7 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 from comfy_api.latest import io, ui
 
 from . import aioloop
-from .client import redact
+from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
 from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload, check_history
 
@@ -37,78 +35,6 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
-
-
-_STATUS_HINTS = {
-    401: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
-    403: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
-}
-
-
-def _response_body_snippet(response: Any, max_len: int = 300) -> str:
-    try:
-        text = response.text
-    except Exception:
-        return ""
-    content_type = response.headers.get("content-type", "").lower()
-    if "html" in content_type or text.lstrip()[:15].lower().startswith(("<!doctype html", "<html")):
-        title = re.search(r"<title[^>]*>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
-        title_text = " ".join(title.group(1).split())[:100] if title else ""
-        return f'HTML page "{title_text}"' if title_text else "HTML page"
-    text = " ".join(text.split())
-    return text[:max_len] + ("..." if len(text) > max_len else "")
-
-
-def _connection_error_reason(err: BaseException) -> BaseException:
-    """The most telling cause of a connection error. The async HTTP client
-    wraps the OS error (e.g. "[Errno 111] Connect call failed") in generic
-    ones ("All connection attempts failed"): prefer it when there is one."""
-    first = err.__cause__ or err.__context__ or err
-    seen: set[int] = set()
-    current: BaseException | None = first
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        if isinstance(current, OSError) and current.errno is not None:
-            return current
-        current = current.__cause__ or current.__context__
-    return first
-
-
-def describe_api_error(err: Exception, client: AsyncOpenAI, hints: dict[int, str] | None = None) -> str:
-    """A clear error message for a failed request: method, URL, status, an
-    excerpt of the answer and a hint (hints: replacements for the default
-    ones, by HTTP status). Never includes the request headers."""
-    if isinstance(err, openai.APIStatusError):
-        request = err.response.request
-        status = err.status_code
-        message = f"the server answered HTTP {status} to {request.method} {request.url}"
-        if 300 <= status < 400:
-            # Only for requests sent without following redirects
-            message += f", a redirect to {err.response.headers.get('location', '?')} that was not followed"
-        snippet = _response_body_snippet(err.response)
-        if snippet:
-            message += f" ({snippet})"
-        hint = _STATUS_HINTS.get(status)
-        if status in (404, 405):
-            # Without any API prefix the route itself is probably wrong. With
-            # one, a 404 usually means an unknown model (ollama, vLLM, OpenAI)
-            if urlparse(str(client.base_url)).path in ("", "/"):
-                hint = "the Base URL probably lacks the API prefix (usually /v1)"
-            else:
-                hint = "check the model name and the Base URL"
-        if 300 <= status < 400:
-            hint = "check the Base URL"
-        if hints and status in hints:
-            hint = hints[status]
-        if hint is not None:
-            message += f". Hint: {hint}"
-        return redact(message, client)
-    if isinstance(err, openai.APIConnectionError):
-        reason = _connection_error_reason(err)
-        kind = "timed out" if isinstance(err, openai.APITimeoutError) else "failed"
-        detail = f"{type(reason).__name__}: {reason}" if str(reason) else type(reason).__name__
-        return redact(f"cannot reach {client.base_url}: the connection {kind} ({detail})", client)
-    return redact(str(err), client)
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> str:
@@ -458,9 +384,7 @@ class ChatCompletion(io.ComfyNode):
         except (openai.APIStatusError, openai.APIConnectionError) as err:
             # The chained original exception is printed in the ComfyUI log:
             # strip any echoed credentials from it too
-            err.args = tuple(redact(a, client) if isinstance(a, str) else a for a in err.args)
-            if isinstance(getattr(err, "message", None), str):
-                err.message = redact(err.message, client)
+            scrub_exception(err, client)
             raise RuntimeError(f"Chat completion request failed: {describe_api_error(err, client)}") from err
         content = extract_response_content(completion)
         # Add the response to the history (content is never None here, a None

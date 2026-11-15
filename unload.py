@@ -8,7 +8,7 @@ from openai import AsyncOpenAI
 from comfy_api.latest import io
 
 from . import aioloop
-from .completions import describe_api_error
+from .apierrors import describe_api_error
 from .interrupt import run_interruptible
 from .iotypes import ParamClient
 

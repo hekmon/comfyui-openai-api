@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Any
 from urllib.parse import urlparse
 
 from openai import AsyncOpenAI
@@ -46,15 +45,6 @@ def read_api_key() -> str:
             "ComfyUI Desktop installation) and restart ComfyUI."
         )
     return api_key
-
-
-def redact(text: str, client: Any) -> str:
-    """Strip the client API key from a text (error message, server answer...):
-    some servers and proxies echo the received credentials in their errors."""
-    api_key = getattr(client, "api_key", None)
-    if isinstance(api_key, str) and len(api_key) > 3:
-        text = text.replace(api_key, "***")
-    return text
 
 
 async def _build_client(api_key: str, base_url: str, max_retries: int, timeout: int) -> AsyncOpenAI:
