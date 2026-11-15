@@ -3,7 +3,7 @@ from comfy_api.latest import ComfyExtension, io
 
 from .client import Client
 from .completions import ChatCompletion
-from .history import TrimHistory, TrimImages
+from .history import TrimHistory
 from .memory import SaveMemory, LoadMemory
 from .unload import UnloadModel
 from .options import OPTION_NODES
@@ -17,7 +17,6 @@ class OpenAIAPIExtension(ComfyExtension):
             ChatCompletion,
             *OPTION_NODES,
             TrimHistory,
-            TrimImages,
             SaveMemory,
             LoadMemory,
             UnloadModel,
