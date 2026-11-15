@@ -127,12 +127,13 @@ def trim_history(messages: list[ChatCompletionMessageParam], max_turns: int, max
     user message are dropped (trim_messages).
     Returns a new list, the input messages are not modified."""
     keep_turns, keep_images, _ = effective_keep(max_turns, max_images, keep_turns, keep_images)
-    _, _, turn_starts = _split_turns(messages)
-    trimmed = trim_messages(messages, max_turns)
-    if len(turn_starts) <= max_turns and (max_images < 0 or count_images(trimmed) <= max_images):
-        return trimmed
-    trimmed = trim_messages(messages, keep_turns)
-    if max_images >= 0:
+    _, rest, turn_starts = _split_turns(messages)
+    # Images of the turns (the orphan replies before the first user message
+    # are dropped either way, their images do not count)
+    images = count_images(rest[turn_starts[0]:]) if turn_starts else 0
+    cut = len(turn_starts) > max_turns or 0 <= max_images < images
+    trimmed = trim_messages(messages, keep_turns if cut else max_turns)
+    if cut and max_images >= 0:
         trimmed = keep_last_images(trimmed, keep_images)
     return trimmed
 
