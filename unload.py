@@ -1,4 +1,6 @@
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import comfy.model_management
@@ -15,48 +17,63 @@ from .iotypes import ParamClient
 
 logger = logging.getLogger(__name__)
 
+@dataclass(frozen=True)
+class ServerType:
+    """How a backend unloads a model: a POST to one of its native routes."""
+    path: str  # relative to the server root (see server_root)
+    needs_model: bool
+    # The request body for a model name, None for no body at all
+    body: Callable[[str], dict[str, Any] | None]
+    # Appended to the default hints of the 401/403 and 404/405 errors
+    auth_hint: str = ""
+    route_hint: str = ""
+
+
 # Backend specific unload calls (the OpenAI API has no such endpoint). Only
 # backends that load the model again on the next request are listed: an unload
 # must never break the next generation. vLLM sleep mode and SGLang memory
 # release are left out for that reason (requests wait or fail until an explicit
-# wake up / resume call).
-# Values: (method, path relative to the server root, needs a model name)
-SERVER_TYPES: dict[str, tuple[str, str, bool]] = {
-    "tabbyAPI": ("POST", "/v1/model/unload", False),
-    "llama.cpp (router mode)": ("POST", "/models/unload", True),
-    "LM Studio": ("POST", "/api/v1/models/unload", True),
-    "ollama": ("POST", "/api/generate", True),
+# wake up / resume call). The keys are the Server Type options, in this order.
+SERVER_TYPES: dict[str, ServerType] = {
+    "tabbyAPI": ServerType(
+        "/v1/model/unload", needs_model=False,
+        body=lambda model: None,  # unloads the loaded model, no body
+        auth_hint=" (tabbyAPI requires an admin key to unload)"),
+    "llama.cpp (router mode)": ServerType(
+        "/models/unload", needs_model=True,
+        body=lambda model: {"model": model},
+        route_hint=" (llama.cpp only has this route in router mode)"),
+    "LM Studio": ServerType(
+        "/api/v1/models/unload", needs_model=True,
+        body=lambda model: {"instance_id": model}),
+    "ollama": ServerType(
+        "/api/generate", needs_model=True,
+        # an empty prompt with keep_alive 0 unloads the model
+        body=lambda model: {"model": model, "keep_alive": 0}),
 }
 
 
 def server_root(base_url: str) -> str:
     """The OpenAI-compatible base URL usually ends with /v1 while the native
     unload routes live at the server root: strip it."""
-    root = base_url.rstrip("/")
-    if root.endswith("/v1"):
-        root = root[:-len("/v1")]
-    return root
+    return base_url.rstrip("/").removesuffix("/v1")
 
 
-def unload_request_body(server_type: str, model: str) -> dict[str, Any] | None:
-    if server_type == "llama.cpp (router mode)":
-        return {"model": model}
-    if server_type == "LM Studio":
-        return {"instance_id": model}
-    if server_type == "ollama":
-        # an empty prompt with keep_alive 0 unloads the model
-        return {"model": model, "keep_alive": 0}
-    return None  # tabbyAPI: unloads the loaded model, no body
+def check_unload_inputs(server_type: str, model: str) -> str | None:
+    """The error message for an unknown server type or a missing model (model
+    already stripped), None if valid."""
+    if server_type not in SERVER_TYPES:
+        return f"unknown server type {server_type!r} (expected one of: {', '.join(SERVER_TYPES)})"
+    if SERVER_TYPES[server_type].needs_model and model == "":
+        return f"model is required to unload from {server_type}"
+    return None
 
 
 def _unload_hints(server_type: str) -> dict[int, str]:
     """Hints for the HTTP errors of an unload call (see describe_api_error)."""
-    auth = "authentication refused: check OPENAI_API_KEY"
-    if server_type == "tabbyAPI":
-        auth += " (tabbyAPI requires an admin key to unload)"
-    route = f"check the Server Type ({server_type}), the model name and the Base URL"
-    if server_type == "llama.cpp (router mode)":
-        route += " (llama.cpp only has this route in router mode)"
+    spec = SERVER_TYPES[server_type]
+    auth = "authentication refused: check OPENAI_API_KEY" + spec.auth_hint
+    route = f"check the Server Type ({server_type}), the model name and the Base URL" + spec.route_hint
     return {401: auth, 403: auth, 404: route, 405: route}
 
 
@@ -67,9 +84,9 @@ async def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeou
     Sent by the client itself (same headers, proxies and connection pool as
     the chat completions: an open connection to the server is reused), on the
     API client loop where it lives, so that Cancel stops it at once."""
-    method, path, _ = SERVER_TYPES[server_type]
-    url = server_root(str(client.base_url)) + path  # absolute: not joined to the base URL
-    body = unload_request_body(server_type, model)
+    spec = SERVER_TYPES[server_type]
+    url = server_root(str(client.base_url)) + spec.path  # absolute: not joined to the base URL
+    body = spec.body(model)
     options: dict[str, Any] = {
         "timeout": timeout,
         # An unload is never retried silently, whatever the client Max Retries
@@ -84,14 +101,11 @@ async def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeou
         options["headers"] = {"Content-Type": openai.Omit()}
     # cast_to=str: the answer is only read as text, never parsed: unload routes
     # may answer with an empty body or plain text
-    if method == "POST":
-        request = client.post(url, cast_to=str, body=body, options=options)  # type: ignore[arg-type]
-    else:
-        request = client.get(url, cast_to=str, options=options)  # type: ignore[arg-type]
+    request = client.post(url, cast_to=str, body=body, options=options)  # type: ignore[arg-type]
     try:
         await run_interruptible(aioloop.submit(request))
     except openai.APITimeoutError:
-        raise RuntimeError(f"{server_type} unload failed ({method} {url}): no answer within {timeout} s") from None
+        raise RuntimeError(f"{server_type} unload failed (POST {url}): no answer within {timeout} s") from None
     except openai.APIError as err:
         # The message never includes the request headers, and strips the key
         # from the server answer (some servers echo the credentials). Not
@@ -100,7 +114,7 @@ async def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeou
         if isinstance(err, openai.APIStatusError):
             # the description already has the method and URL
             raise RuntimeError(f"{server_type} unload failed: {detail}") from None
-        raise RuntimeError(f"{server_type} unload failed ({method} {url}): {detail}") from None
+        raise RuntimeError(f"{server_type} unload failed (POST {url}): {detail}") from None
 
 
 class UnloadModel(io.ComfyNode):
@@ -165,9 +179,9 @@ class UnloadModel(io.ComfyNode):
     @classmethod
     def validate_inputs(cls, server_type: str | None, model: str | None) -> bool | str:
         # None when coming from another node: checked at execution
-        if server_type is not None and model is not None:
-            if server_type in SERVER_TYPES and SERVER_TYPES[server_type][2] and model.strip() == "":
-                return f"model is required to unload from {server_type}"
+        # (an unknown server type is already rejected by the Combo input)
+        if server_type is not None and model is not None and server_type in SERVER_TYPES:
+            return check_unload_inputs(server_type, model.strip()) or True
         return True
 
     @classmethod
@@ -181,8 +195,9 @@ class UnloadModel(io.ComfyNode):
                 ) -> io.NodeOutput:
         model = (model or "").strip()
         try:
-            if SERVER_TYPES[server_type][2] and model == "":
-                raise ValueError(f"model is required to unload from {server_type}")
+            error = check_unload_inputs(server_type, model)
+            if error is not None:
+                raise ValueError(error)
             await unload_model(client, server_type, model, timeout)
             logger.info("%s: model %s unloaded", server_type, model or "(current)")
         except comfy.model_management.InterruptProcessingException:
