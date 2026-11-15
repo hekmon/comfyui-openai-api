@@ -1,6 +1,8 @@
+import asyncio
 import base64
 from io import BytesIO
 import logging
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -36,6 +38,31 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+def _encode_images(images: torch.Tensor, stop: threading.Event) -> list[str]:
+    urls: list[str] = []
+    for image in images:  # iterating a [B,H,W,C] tensor yields [H,W,C] images
+        if stop.is_set():
+            break  # the caller gave up (Cancel, prompt failure): result unused
+        urls.append(comfy_image_to_base64_png_url(image))
+    return urls
+
+
+async def encode_images(images: torch.Tensor) -> list[str]:
+    """The PNG data URLs of a batch of images, encoded in a worker thread: the
+    encoding of a big batch takes seconds, and on the prompt event loop it
+    would stall every other node running meanwhile (and the Cancel checks).
+    The images are only read.
+
+    Stops at Cancel like a request (see run_interruptible). A running thread
+    can not be cancelled: the stop event ends it after the current image, so
+    that a Cancel does not wait for the whole batch to end the prompt."""
+    stop = threading.Event()
+    try:
+        return await run_interruptible(asyncio.to_thread(_encode_images, images, stop))
+    finally:
+        stop.set()
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> str:
@@ -313,10 +340,7 @@ class ChatCompletion(io.ComfyNode):
                 "Use only one: max_tokens for older models and providers, "
                 "or max_completion_tokens for newer OpenAI chat models."
             )
-        image_urls = None
-        if images is not None:
-            # iterating a [B,H,W,C] tensor yields [H,W,C] images
-            image_urls = [comfy_image_to_base64_png_url(image) for image in images]
+        image_urls = await encode_images(images) if images is not None else None
         messages = _build_messages(history, system_prompt, request_options)
         messages.append(_user_message(prompt, image_urls))
         request_kwargs: dict[str, Any] = {
