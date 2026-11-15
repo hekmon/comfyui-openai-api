@@ -10,7 +10,7 @@ import torch
 import numpy as np
 from PIL import Image
 import openai
-from openai import OpenAI
+from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion as ChatCompletionResponse
 from openai.types.completion_usage import CompletionUsage
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
@@ -18,7 +18,9 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 
 from comfy_api.latest import io, ui
 
+from . import aioloop
 from .client import redact
+from .interrupt import run_interruptible
 from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload, check_history
 
 
@@ -57,7 +59,7 @@ def _response_body_snippet(response: Any, max_len: int = 300) -> str:
     return text[:max_len] + ("..." if len(text) > max_len else "")
 
 
-def describe_api_error(err: Exception, client: OpenAI) -> str:
+def describe_api_error(err: Exception, client: AsyncOpenAI) -> str:
     """A clear error message for a failed request: method, URL, status, an
     excerpt of the answer and a hint. Never includes the request headers."""
     if isinstance(err, openai.APIStatusError):
@@ -247,15 +249,15 @@ class ChatCompletion(io.ComfyNode):
         return ""  # constant: let the regular ComfyUI cache apply
 
     @classmethod
-    def execute(cls,
-                client: OpenAI,
-                model: str,
-                prompt: str,
-                system_prompt: str | None = None,
-                history: HistoryPayload | None = None,
-                options: OptionsPayload | None = None,
-                images: torch.Tensor | None = None,
-                force_regen: bool = False,
+    async def execute(cls,
+                      client: AsyncOpenAI,
+                      model: str,
+                      prompt: str,
+                      system_prompt: str | None = None,
+                      history: HistoryPayload | None = None,
+                      options: OptionsPayload | None = None,
+                      images: torch.Tensor | None = None,
+                      force_regen: bool = False,
                 ) -> io.NodeOutput:
         # Linked inputs are not checked by validate_inputs (None there)
         if not isinstance(prompt, str) or prompt == "":
@@ -425,7 +427,10 @@ class ChatCompletion(io.ComfyNode):
         if extra_body:
             request_kwargs["extra_body"] = extra_body
         try:
-            completion = client.chat.completions.create(**request_kwargs)
+            # Sent from the API client loop, where the client lives: its
+            # connections are shared with the other nodes using this client
+            completion = await run_interruptible(
+                aioloop.submit(client.chat.completions.create(**request_kwargs)))
         except (openai.APIStatusError, openai.APIConnectionError) as err:
             # The chained original exception is printed in the ComfyUI log:
             # strip any echoed credentials from it too

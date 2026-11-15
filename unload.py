@@ -4,7 +4,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from comfy_api.latest import io
 
@@ -60,7 +60,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(_NoRedirect)
 
 
-def unload_model(client: OpenAI, server_type: str, model: str, timeout: float) -> None:
+def unload_model(client: AsyncOpenAI, server_type: str, model: str, timeout: float) -> None:
     """Ask a local inference server to unload its model. Raises on failure.
     Based on the unload_localhosted_models helper of PR #11 by nikich340."""
     method, path, _ = SERVER_TYPES[server_type]
@@ -159,7 +159,7 @@ class UnloadModel(io.ComfyNode):
     @classmethod
     def execute(cls,
                 value: Any,
-                client: OpenAI,
+                client: AsyncOpenAI,
                 server_type: str,
                 model: str,
                 timeout: float,

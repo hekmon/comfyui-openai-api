@@ -3,9 +3,10 @@ import os
 from typing import Any
 from urllib.parse import urlparse
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from comfy_api.latest import io
 
+from . import aioloop
 from .iotypes import ParamClient
 
 # API keys must never travel through widget inputs: ComfyUI serializes every
@@ -54,6 +55,16 @@ def redact(text: str, client: Any) -> str:
     if isinstance(api_key, str) and len(api_key) > 3:
         text = text.replace(api_key, "***")
     return text
+
+
+async def _build_client(api_key: str, base_url: str, max_retries: int, timeout: int) -> AsyncOpenAI:
+    # A coroutine only to run on the API client loop
+    return AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        max_retries=max_retries,
+        timeout=timeout,
+    )
 
 
 class Client(io.ComfyNode):
@@ -111,7 +122,7 @@ class Client(io.ComfyNode):
         return True
 
     @classmethod
-    def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
+    async def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
         # No API prefix at all: fine for llama.cpp, a 404/405 for most other
         # servers. Only a warning (once per URL), never added automatically.
         if urlparse(base_url).path in ("", "/") and base_url not in _warned_base_urls:
@@ -119,13 +130,13 @@ class Client(io.ComfyNode):
             logger.warning(
                 "OpenAI API client: the base URL %s has no API path prefix (usually /v1). "
                 "This works with llama.cpp, most other servers expect .../v1", base_url)
-        return io.NodeOutput(
-            OpenAI(
-                # an empty variable also falls back to the placeholder: the SDK
-                # rejects an empty key
-                api_key=read_api_key(),
-                base_url=base_url,
-                max_retries=max_retries,
-                timeout=timeout
-            )
-        )
+        # an empty variable also falls back to the placeholder: the SDK
+        # rejects an empty key
+        api_key = read_api_key()
+        # One async client shared by every node connected to this one, and
+        # reused across prompts while ComfyUI caches it: its connections are
+        # kept alive between requests. Built and used on the API client loop
+        # only (see aioloop), never on the per prompt ComfyUI one.
+        client = await aioloop.submit(_build_client(api_key, base_url, max_retries, timeout))
+        aioloop.close_when_collected(client)
+        return io.NodeOutput(client)
