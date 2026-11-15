@@ -55,7 +55,7 @@ SERVER_TYPES: dict[str, ServerType] = {
     "Unsloth Studio": ServerType(
         "/models/unload", needs_model=True,
         body=lambda model: {"model": model},
-        auth_hint=" (Unsloth Studio expects one of its sk-unsloth-... API keys)",
+        auth_hint=" (Unsloth Studio expects one of its sk-unsloth-... API keys, or OPENAI_API_KEY unset with keyless access)",
         route_hint=" (Unsloth Studio has this route since October 2026: update it)"),
 }
 
@@ -157,7 +157,7 @@ class UnloadModel(io.ComfyNode):
                     display_name="Server Type",
                     options=list(SERVER_TYPES.keys()),
                     default="ollama",
-                    tooltip="The inference server software. tabbyAPI: needs an admin key in OPENAI_API_KEY, and reloads on the next request only with inline_model_loading: true in its config.yml (and an admin key). llama.cpp: only in router mode (llama-server started without -m), reloads on demand unless --no-models-autoload. LM Studio: reloads on demand with JIT loading enabled (default). ollama: reloads on demand. Unsloth Studio: needs a Studio API key (sk-unsloth-...) in OPENAI_API_KEY and a version from October 2026 or later, reloads on demand only with the OpenAI API model auto-switch setting enabled (off by default).",
+                    tooltip="The inference server software. tabbyAPI: needs an admin key in OPENAI_API_KEY, and reloads on the next request only with inline_model_loading: true in its config.yml (and an admin key). llama.cpp: only in router mode (llama-server started without -m), reloads on demand unless --no-models-autoload. LM Studio: reloads on demand with JIT loading enabled (default). ollama: reloads on demand. Unsloth Studio: needs a version from October 2026 or later and a Studio API key (sk-unsloth-...) in OPENAI_API_KEY, or keyless access with OPENAI_API_KEY unset; reloads on demand only with Model auto-switch enabled (Settings > API, off by default).",
                 ),
                 io.String.Input(
                     id="model",
