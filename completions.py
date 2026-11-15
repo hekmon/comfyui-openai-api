@@ -155,8 +155,8 @@ _DEVELOPER_ROLE_KEY = "use_developer_role"
 class _RequestOptions:
     fields: dict[str, Any]  # request fields with a value, in _REQUEST_OPTIONS order
     extra_body: dict[str, Any]  # every other key (Extra Body node...), sent as is
-    developer_role_set: bool  # a Developer Role node (or key) is present
-    use_developer_role: Any  # its value, used as a boolean
+    # "system" or "developer" from a Developer Role node (or key), None without
+    instructions_role: str | None
 
 
 def _split_options(options: OptionsPayload | None) -> _RequestOptions:
@@ -166,10 +166,11 @@ def _split_options(options: OptionsPayload | None) -> _RequestOptions:
         value = extra_body.pop(key, None)
         if value is not None:
             fields[key] = value
+    instructions_role = None
     # Its presence counts, even with a null value (from an Extra Body)
-    developer_role_set = _DEVELOPER_ROLE_KEY in extra_body
-    use_developer_role = extra_body.pop(_DEVELOPER_ROLE_KEY, False)
-    return _RequestOptions(fields, extra_body, developer_role_set, use_developer_role)
+    if _DEVELOPER_ROLE_KEY in extra_body:
+        instructions_role = "developer" if extra_body.pop(_DEVELOPER_ROLE_KEY) else "system"
+    return _RequestOptions(fields, extra_body, instructions_role)
 
 
 def _instructions_message(content: str, developer: bool) -> ChatCompletionMessageParam:
@@ -187,20 +188,19 @@ def _build_messages(history: HistoryPayload | None, system_prompt: str | None,
     Developer Role option."""
     messages = history.get_msgs_copy() if history is not None else []
     has_instructions = bool(messages) and messages[0].get("role") in INSTRUCTIONS_ROLES
+    role = options.instructions_role
     if system_prompt:
-        instructions = _instructions_message(system_prompt, bool(options.use_developer_role))
+        instructions = _instructions_message(system_prompt, role == "developer")
         if has_instructions:
             messages[0] = instructions
         else:
             messages.insert(0, instructions)
-    elif has_instructions and options.developer_role_set:
+    elif has_instructions and role is not None and messages[0].get("role") != role:
         # No new instructions but the Developer Role option is explicitly
         # set: convert the existing instructions message role to match it.
         # Build a new dict, the history messages are shared with the
         # (cached) upstream node output and must not be mutated.
-        wanted_role = "developer" if options.use_developer_role else "system"
-        if messages[0].get("role") != wanted_role:
-            messages[0] = {**messages[0], "role": wanted_role}
+        messages[0] = {**messages[0], "role": role}
     return messages
 
 
