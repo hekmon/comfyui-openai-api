@@ -11,7 +11,7 @@ _STATUS_HINTS = {
 }
 
 
-def redact(text: str, client: Any) -> str:
+def redact(text: str, client: AsyncOpenAI) -> str:
     """Strip the client API key from a text (error message, server answer...):
     some servers and proxies echo the received credentials in their errors."""
     api_key = getattr(client, "api_key", None)
@@ -20,7 +20,7 @@ def redact(text: str, client: Any) -> str:
     return text
 
 
-def scrub_exception(err: openai.APIError, client: Any) -> None:
+def scrub_exception(err: openai.APIError, client: AsyncOpenAI) -> None:
     """Strip the client API key from an SDK exception, in place, before it is
     chained to another one: ComfyUI prints the chained exception in its log."""
     err.args = tuple(redact(a, client) if isinstance(a, str) else a for a in err.args)

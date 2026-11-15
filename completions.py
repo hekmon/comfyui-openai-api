@@ -136,7 +136,7 @@ def format_usage(usage: CompletionUsage | None) -> str | None:
 # Request fields set by the option nodes: sent as SDK arguments, and omitted
 # when unset (or null in an Extra Body) so providers are not sent null values
 _REQUEST_OPTIONS = (
-    "seed",  # deprecated, should we remove it?
+    "seed",  # deprecated by OpenAI, still honoured by most local backends
     "temperature",
     "max_tokens",
     "max_completion_tokens",
@@ -370,7 +370,7 @@ class ChatCompletion(io.ComfyNode):
         )
         # Handle usage stats as text preview
         stats = format_usage(completion.usage)
-        # add it to the console following the openai http call log for now as previewtext does not work yet
+        # Also printed to the console, after the log line of the HTTP request
         if stats:
             print(stats)
         # Return the response and the history and the stats for the UI

@@ -28,14 +28,13 @@ class _MemoryStore:
             self._values.pop(key, None)
             self._versions[key] = self._versions.get(key, 0) + 1
 
-    def load(self, key: str) -> tuple[bool, Any]:
+    def load(self, key: str) -> Any:
+        """A copy of the value stored under key, None if there is none."""
         with self._lock:
-            if key not in self._values:
-                return False, None
-            stored = self._values[key]
+            stored = self._values.get(key)
         # Stored values are never mutated in place (save replaces them), so
         # the copy can be made outside of the lock
-        return True, copy.deepcopy(stored)
+        return copy.deepcopy(stored)
 
     def version(self, key: str) -> int:
         with self._lock:
@@ -144,7 +143,7 @@ class LoadMemory(io.ComfyNode):
         )
 
     @classmethod
-    def fingerprint_inputs(cls, **kwargs) -> Any:
+    def fingerprint_inputs(cls, **kwargs) -> float | int:
         # ComfyUI evaluates the fingerprints of the whole prompt before
         # executing any node: the version is the one left by the previous run.
         # A linked input (None here) is not known yet: always re-run then.
@@ -166,5 +165,5 @@ class LoadMemory(io.ComfyNode):
             MEMORY.wipe(normalized_key)
             return io.NodeOutput(default)
         # A stored None counts as nothing stored, so default applies to it too
-        _, value = MEMORY.load(normalized_key)
+        value = MEMORY.load(normalized_key)
         return io.NodeOutput(default if value is None else value)
