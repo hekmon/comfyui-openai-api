@@ -37,8 +37,8 @@ class _SetOption(io.ComfyNode):
     """Base of the option nodes that set one option to the value of their input.
 
     The option key is the input id, unless KEY is set. To add an option: subclass
-    this, return _option_schema(...) from define_schema, register the class in
-    __init__.py. Never register this base class itself (ComfyUI caches the schema
+    this, return _option_schema(...) from define_schema, add the class to
+    OPTION_NODES. Never list this base class itself (ComfyUI caches the schema
     properties on the class, and subclasses would inherit them)."""
 
     KEY: str | None = None
@@ -290,3 +290,18 @@ class OptionExtraBody(io.ComfyNode):
         return io.NodeOutput(
             OptionsPayload(options)
         )
+
+
+# Every option node, in their order in the node list
+OPTION_NODES: list[type[io.ComfyNode]] = [
+    OptionSeed,
+    OptionTemperature,
+    OptionMaxTokens,
+    OptionMaxCompletionTokens,
+    OptionTopP,
+    OptionFrequencyPenalty,
+    OptionPresencePenalty,
+    OptionReasoningEffort,
+    OptionDeveloperRole,
+    OptionExtraBody,
+]

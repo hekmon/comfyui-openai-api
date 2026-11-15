@@ -6,7 +6,7 @@ from .completions import ChatCompletion
 from .history import TrimHistory
 from .memory import SaveMemory, LoadMemory
 from .unload import UnloadModel
-from .options import OptionSeed, OptionTemperature, OptionMaxTokens, OptionMaxCompletionTokens, OptionTopP, OptionFrequencyPenalty, OptionPresencePenalty, OptionReasoningEffort, OptionExtraBody, OptionDeveloperRole
+from .options import OPTION_NODES
 
 
 class OpenAIAPIExtension(ComfyExtension):
@@ -15,16 +15,7 @@ class OpenAIAPIExtension(ComfyExtension):
         return [
             Client,
             ChatCompletion,
-            OptionSeed,
-            OptionTemperature,
-            OptionMaxTokens,
-            OptionMaxCompletionTokens,
-            OptionTopP,
-            OptionFrequencyPenalty,
-            OptionPresencePenalty,
-            OptionReasoningEffort,
-            OptionDeveloperRole,
-            OptionExtraBody,
+            *OPTION_NODES,
             TrimHistory,
             SaveMemory,
             LoadMemory,
