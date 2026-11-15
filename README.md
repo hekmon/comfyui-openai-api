@@ -16,6 +16,8 @@ The default `base_url` parameter value targets the official OpenAI API endpoint 
 
 Multiples images are supported as long as they are fed batched to the chat completion node.
 
+Rarely changed settings are advanced inputs: the Client `Max Retries` and `Timeout`, the Unload Model `Timeout` and `Fail On Error`, the Trim History `Keep Turns` and `Keep Images`. With the *Nodes 2.0* display, click *Show advanced inputs* at the bottom of the node to see them; the classic display shows them with the other widgets.
+
 ### Client node
 
 - `Base URL`: the OpenAI-compatible endpoint **including its API path prefix**, usually `/v1`: the part before `/chat/completions`, as requests are sent to `<Base URL>/chat/completions` and nothing is added automatically. Examples: `http://localhost:8000/v1` (vLLM, SGLang, tabbyAPI...), `http://localhost:11434/v1` (ollama), `http://localhost:1234/v1` (LM Studio), `https://api.openai.com/v1`. Some providers use another prefix; llama.cpp also answers without `/v1` (e.g. `http://localhost:8080`). A trailing slash makes no difference.

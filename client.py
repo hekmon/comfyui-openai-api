@@ -80,6 +80,7 @@ class Client(io.ComfyNode):
                     default=2,
                     min=0,
                     max=10,
+                    advanced=True,
                 ),
                 io.Int.Input(
                     id="timeout",
@@ -88,6 +89,7 @@ class Client(io.ComfyNode):
                     default=600,
                     min=1,
                     max=86400,  # explicit, otherwise the frontend caps it at 2048
+                    advanced=True,
                 ),
             ],
             outputs=[

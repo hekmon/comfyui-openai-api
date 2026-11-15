@@ -159,12 +159,14 @@ class UnloadModel(io.ComfyNode):
                     max=300.0,
                     step=0.5,
                     display_mode=io.NumberDisplay.number,
+                    advanced=True,
                 ),
                 io.Boolean.Input(
                     id="fail_on_error",
                     display_name="Fail On Error",
                     tooltip="If false, an unload failure only logs a warning and the value is still passed through. If true, it stops the workflow with an error.",
                     default=False,
+                    advanced=True,
                 ),
             ],
             outputs=[
