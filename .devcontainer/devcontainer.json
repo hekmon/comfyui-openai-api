@@ -1,9 +1,38 @@
 {
+    // ComfyUI (CPU only) with this repository mounted as a custom node.
+    // Start ComfyUI with the "ComfyUI (CPU)" debug configuration (F5), or from
+    // a terminal: python main.py --cpu --listen
+    // then open the forwarded port 8188.
     "name": "ComfyUI-OpenAIAPI",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        "args": {
+            // ComfyUI release tag, e.g. "v0.3.48" (minimum supported version).
+            // Empty: latest release. Rebuild the container after changing it.
+            "COMFYUI_VERSION": ""
+        }
     },
     "workspaceMount": "source=${localWorkspaceFolder},target=/ComfyUI/custom_nodes/comfyui-openai-api,type=bind",
     "workspaceFolder": "/ComfyUI",
-    "updateContentCommand": "pip install -r /ComfyUI/custom_nodes/comfyui-openai-api/requirements.txt"
+    "updateContentCommand": "pip install -r /ComfyUI/custom_nodes/comfyui-openai-api/requirements.txt",
+    "forwardPorts": [8188],
+    "portsAttributes": {
+        "8188": {
+            "label": "ComfyUI"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff"
+            ],
+            "settings": {
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                }
+            }
+        }
+    }
 }

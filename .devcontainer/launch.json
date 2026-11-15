@@ -1,0 +1,15 @@
+{
+    // Copied to /ComfyUI/.vscode/launch.json by the dev container Dockerfile.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ComfyUI (CPU)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "args": ["--cpu", "--listen"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
