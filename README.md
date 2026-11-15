@@ -21,6 +21,7 @@ Multiples images are supported as long as they are fed batched to the chat compl
 - `Base URL`: the OpenAI-compatible endpoint **including its API path prefix**, usually `/v1`: the part before `/chat/completions`, as requests are sent to `<Base URL>/chat/completions` and nothing is added automatically. Examples: `http://localhost:8000/v1` (vLLM, SGLang, tabbyAPI...), `http://localhost:11434/v1` (ollama), `http://localhost:1234/v1` (LM Studio), `https://api.openai.com/v1`. Some providers use another prefix; llama.cpp also answers without `/v1` (e.g. `http://localhost:8080`). A trailing slash makes no difference.
 - `Max Retries` (0 to 10, default 2): how many times a failed request (connection error, timeout, HTTP 408/409/429/5xx) is retried by the OpenAI SDK, with an exponential backoff.
 - `Timeout` (seconds, default 600): maximum duration of a single request attempt. Raise it for slow local models generating long answers.
+- Connect one client node to as many chat completion (and unload) nodes as needed: they share its connections to the server, kept open between requests and across runs (as long as ComfyUI keeps the client node cached), instead of opening a new one per request.
 
 ### Chat completion node
 
@@ -28,6 +29,8 @@ Multiples images are supported as long as they are fed batched to the chat compl
 - `History`: chain the `History` output of a chat completion node into the `History` input of the next one to continue the conversation. The history contains the previous messages (images included) and the model answers. A non empty `System Prompt` replaces the system message of the history; if left empty, the history one is kept (its role follows the `Developer Role` option when that option is connected).
 - `Force Regen`: ComfyUI caches the node output and only calls the API again when one of its inputs changes. Enable it to send a new request on every run, e.g. to get a different answer with the same prompt. If this input is linked to another node, the request is always sent again.
 - If the model returns no text (for example a reasoning model that used its whole token budget), the response is an empty string and a warning with the `finish_reason` is logged in the console. A refusal or a response without any choice raises an error.
+- The ComfyUI `Cancel` button (or `POST /interrupt`) stops a running request at once, instead of waiting for the answer or the client timeout.
+- Chat completion nodes that do not depend on each other (independent branches of the workflow) send their requests at the same time, so the run takes as long as the slowest one instead of the sum. The server must handle concurrent requests for this to help (most local servers queue or batch them depending on their settings).
 
 If you want to customize the chat completion, you can chain options to modify the request. Most common options are available as predefined nodes but you can inject any key/value pair using the `Extra body` node.
 
@@ -70,11 +73,12 @@ Example workflows (API format: open them with *Workflow > Open* or drag and drop
 
 ## Unloading the model (local servers)
 
-The `Unload Model` node asks a local inference server to unload its model, e.g. to free VRAM before an image generation. Connect the output to unload after (usually the chat completion response) to its `Value` input: the node runs once that value is ready and passes it through unchanged. Connect the same client node as your chat completion node, no change needed (keep the usual `.../v1` base URL): its API key is reused, and the server root used by the native unload routes below is derived from the base URL automatically.
+The `Unload Model` node asks a local inference server to unload its model, e.g. to free VRAM before an image generation. Connect the output to unload after (usually the chat completion response) to its `Value` input: the node runs once that value is ready and passes it through unchanged. Connect the same client node as your chat completion node, no change needed (keep the usual `.../v1` base URL): its API key and its connection to the server are reused, and the server root used by the native unload routes below is derived from the base URL automatically.
 
 - `Server Type`: pick your server, there is no "try every server" mode. `Model` is the model name, as in the chat completion node: required for llama.cpp, LM Studio and ollama.
-- `Timeout` (default 10 s) is specific to the unload request.
+- `Timeout` (default 10 s) is specific to the unload request. The unload is never retried (the client `Max Retries` does not apply) and redirects are not followed.
 - If the unload fails, a warning is logged and the value is still passed through; enable `Fail On Error` to stop the workflow instead.
+- `Cancel` also stops a pending unload request at once.
 
 | Server | Unload call (from the server root) | Reload on the next request | Server side requirements |
 |---|---|---|---|
