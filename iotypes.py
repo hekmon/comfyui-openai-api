@@ -12,6 +12,8 @@ ParamOptions = io.Custom("OAIAPI_OPTIONS")
 
 # Roles of the leading instructions message of a conversation
 INSTRUCTIONS_ROLES = ("system", "developer")
+# Option set by the Developer Role node, read by Chat Completion, never sent
+DEVELOPER_ROLE_KEY = "use_developer_role"
 
 
 class HistoryPayload:
@@ -23,6 +25,17 @@ class HistoryPayload:
 
     def __str__(self) -> str:
         return json.dumps(self.history, indent=4)
+
+
+class OptionsPayload:
+    def __init__(self, options: dict[str, Any] | None = None) -> None:
+        self.options = options
+
+    def get_options_copy(self) -> dict[str, Any]:
+        return self.options.copy() if self.options else {}
+
+    def __str__(self) -> str:
+        return json.dumps(self.options, indent=4)
 
 
 def check_input(value: Any, expected: type, input_name: str, what: str, node: str, optional: bool = True) -> None:
@@ -49,14 +62,3 @@ def check_options(options: Any, node: str) -> None:
 
 def check_client(client: Any, node: str) -> None:
     check_input(client, AsyncOpenAI, "API Client", "an API client (from the Client node)", node, optional=False)
-
-
-class OptionsPayload:
-    def __init__(self, options: dict[str, Any] | None = None) -> None:
-        self.options = options
-
-    def get_options_copy(self) -> dict[str, Any]:
-        return self.options.copy() if self.options else {}
-
-    def __str__(self) -> str:
-        return json.dumps(self.options, indent=4)

@@ -6,6 +6,7 @@ from openai import AsyncOpenAI
 from comfy_api.latest import io
 
 from . import aioloop
+from .apierrors import has_no_api_prefix
 from .iotypes import ParamClient
 
 # API keys must never travel through widget inputs: ComfyUI serializes every
@@ -135,7 +136,7 @@ class Client(io.ComfyNode):
             raise ValueError(f"Client: {error}")
         # No API prefix at all: fine for llama.cpp, a 404/405 for most other
         # servers. Only a warning (once per URL), never added automatically.
-        if urlparse(base_url).path in ("", "/") and base_url not in _warned_base_urls:
+        if has_no_api_prefix(base_url) and base_url not in _warned_base_urls:
             _warned_base_urls.add(base_url)
             logger.warning(
                 "OpenAI API client: the base URL %s has no API path prefix (usually /v1). "

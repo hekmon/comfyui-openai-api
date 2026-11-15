@@ -3,7 +3,7 @@ from typing import Any
 
 from comfy_api.latest import io
 
-from .iotypes import ParamOptions, OptionsPayload, check_options
+from .iotypes import DEVELOPER_ROLE_KEY, ParamOptions, OptionsPayload, check_options
 
 
 def _option_schema(node_id: str, display_name: str, description: str, value: io.Input) -> io.Schema:
@@ -47,7 +47,10 @@ class _SetOption(io.ComfyNode):
     def execute(cls, *, other_options: OptionsPayload | None = None, **inputs: Any) -> io.NodeOutput:
         # ComfyUI passes the inputs by name: the only one left is the value input
         ((input_id, value),) = inputs.items()
-        check_options(other_options, cls.define_schema().display_name.removeprefix("OpenAI API - "))
+        if other_options is not None and not isinstance(other_options, OptionsPayload):
+            # The node name is only needed for the error message: the schema
+            # is not built on every run for it
+            check_options(other_options, cls.define_schema().display_name.removeprefix("OpenAI API - "))
         options = other_options.get_options_copy() if other_options is not None else {}
         options[cls.KEY or input_id] = value
         return io.NodeOutput(
@@ -216,7 +219,7 @@ class OptionReasoningEffort(_SetOption):
 
 class OptionDeveloperRole(_SetOption):
     # The key read by Chat Completion; the input keeps its own id (saved workflows)
-    KEY = "use_developer_role"
+    KEY = DEVELOPER_ROLE_KEY
 
     @classmethod
     def define_schema(cls) -> io.Schema:

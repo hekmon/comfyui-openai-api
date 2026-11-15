@@ -287,5 +287,6 @@ class TrimHistory(io.ComfyNode):
         if history is None:
             return io.NodeOutput(None)
         check_history(history, "Trim History")
-        return io.NodeOutput(HistoryPayload(trim_history(history.get_msgs_copy(), max_turns, max_images,
+        # trim_history returns a new list and never modifies its input
+        return io.NodeOutput(HistoryPayload(trim_history(history.history or [], max_turns, max_images,
                                                          keep_turns, keep_images)))

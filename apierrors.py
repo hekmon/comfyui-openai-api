@@ -12,6 +12,12 @@ _STATUS_HINTS = {
 }
 
 
+def has_no_api_prefix(base_url: str) -> bool:
+    """Whether a Base URL has no path at all (no /v1 or other API prefix):
+    fine for llama.cpp, a 404/405 for most other servers."""
+    return urlparse(base_url).path in ("", "/")
+
+
 def redact(text: str, client: AsyncOpenAI) -> str:
     """Strip the client API key from a text (error message, server answer...):
     some servers and proxies echo the received credentials in their errors."""
@@ -113,7 +119,7 @@ def describe_api_error(err: Exception, client: AsyncOpenAI, hints: dict[int, str
         elif status in (404, 405):
             # Without any API prefix the route itself is probably wrong. With
             # one, a 404 usually means an unknown model (ollama, vLLM, OpenAI)
-            if urlparse(str(client.base_url)).path in ("", "/"):
+            if has_no_api_prefix(str(client.base_url)):
                 hint = "the Base URL probably lacks the API prefix (usually /v1)"
             else:
                 hint = "check the model name and the Base URL"

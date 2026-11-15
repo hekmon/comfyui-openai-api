@@ -22,7 +22,7 @@ from comfy_api.latest import io, ui
 from . import aioloop
 from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
-from .iotypes import (INSTRUCTIONS_ROLES, ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload,
+from .iotypes import (DEVELOPER_ROLE_KEY, INSTRUCTIONS_ROLES, ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload,
                       check_client, check_history, check_input, check_options)
 
 
@@ -147,8 +147,6 @@ _REQUEST_OPTIONS = (
     # Reasoning Effort node omits the field
     "reasoning_effort",
 )
-# Set by the Developer Role node, read here and never sent
-_DEVELOPER_ROLE_KEY = "use_developer_role"
 
 
 @dataclass
@@ -168,8 +166,8 @@ def _split_options(options: OptionsPayload | None) -> _RequestOptions:
             fields[key] = value
     instructions_role = None
     # Its presence counts, even with a null value (from an Extra Body)
-    if _DEVELOPER_ROLE_KEY in extra_body:
-        instructions_role = "developer" if extra_body.pop(_DEVELOPER_ROLE_KEY) else "system"
+    if DEVELOPER_ROLE_KEY in extra_body:
+        instructions_role = "developer" if extra_body.pop(DEVELOPER_ROLE_KEY) else "system"
     return _RequestOptions(fields, extra_body, instructions_role)
 
 
