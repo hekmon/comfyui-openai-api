@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from comfy_api.latest import io
 
+from .client import redact
 from .iotypes import ParamClient
 
 
@@ -47,6 +48,18 @@ def unload_request_body(server_type: str, model: str) -> dict[str, Any] | None:
     return None  # tabbyAPI: unloads the loaded model, no body
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never follow redirects: urllib would forward the Authorization header
+    (the API key) to any host, turn the POST into a GET and could report a
+    success for an unload that never happened. A 3xx is raised as an error."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def unload_model(client: OpenAI, server_type: str, model: str, timeout: float) -> None:
     """Ask a local inference server to unload its model. Raises on failure.
     Based on the unload_localhosted_models helper of PR #11 by nikich340."""
@@ -60,17 +73,20 @@ def unload_model(client: OpenAI, server_type: str, model: str, timeout: float) -
         headers["Content-Type"] = "application/json"
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with _OPENER.open(request, timeout=timeout) as response:
             status = response.status
     except urllib.error.HTTPError as e:
-        # Only the start of the server answer: never the request headers (key)
+        # Only the start of the server answer: never the request headers. The
+        # key is still stripped from it, some servers echo the credentials.
         detail = e.read(300).decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"{server_type} unload failed ({method} {url}): HTTP {e.code} {detail}") from None
+        if 300 <= e.code < 400:
+            detail = f"redirect to {e.headers.get('Location', '?')} refused, check the base URL"
+        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): HTTP {e.code} {detail}", client)) from None
     except (urllib.error.URLError, OSError) as e:
         reason = getattr(e, "reason", e)
-        raise RuntimeError(f"{server_type} unload failed ({method} {url}): {reason}") from None
+        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): {reason}", client)) from None
     if not 200 <= status < 300:
-        raise RuntimeError(f"{server_type} unload failed ({method} {url}): HTTP {status}")
+        raise RuntimeError(redact(f"{server_type} unload failed ({method} {url}): HTTP {status}", client))
 
 
 class UnloadModel(io.ComfyNode):

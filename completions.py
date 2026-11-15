@@ -17,6 +17,7 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 
 from comfy_api.latest import io, ui
 
+from .client import redact
 from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
 
 
@@ -41,14 +42,6 @@ _STATUS_HINTS = {
     404: "the Base URL probably lacks the API prefix (usually /v1)",
     405: "the Base URL probably lacks the API prefix (usually /v1)",
 }
-
-
-def _redact(text: str, client: OpenAI) -> str:
-    # Some servers echo the received credentials in their error answer
-    api_key = getattr(client, "api_key", None)
-    if isinstance(api_key, str) and len(api_key) > 3:
-        text = text.replace(api_key, "***")
-    return text
 
 
 def _response_body_snippet(response: Any, max_len: int = 300) -> str:
@@ -80,12 +73,12 @@ def describe_api_error(err: Exception, client: OpenAI) -> str:
             if status in (404, 405):
                 hint += f": the request went to {request.url}"
             message += f". Hint: {hint}"
-        return _redact(message, client)
+        return redact(message, client)
     if isinstance(err, openai.APIConnectionError):
         reason = err.__cause__ or err.__context__ or err
         kind = "timed out" if isinstance(err, openai.APITimeoutError) else "failed"
-        return _redact(f"cannot reach {client.base_url}: the connection {kind} ({type(reason).__name__}: {reason})", client)
-    return _redact(str(err), client)
+        return redact(f"cannot reach {client.base_url}: the connection {kind} ({type(reason).__name__}: {reason})", client)
+    return redact(str(err), client)
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> str:
@@ -426,9 +419,9 @@ class ChatCompletion(io.ComfyNode):
         except (openai.APIStatusError, openai.APIConnectionError) as err:
             # The chained original exception is printed in the ComfyUI log:
             # strip any echoed credentials from it too
-            err.args = tuple(_redact(a, client) if isinstance(a, str) else a for a in err.args)
+            err.args = tuple(redact(a, client) if isinstance(a, str) else a for a in err.args)
             if isinstance(getattr(err, "message", None), str):
-                err.message = _redact(err.message, client)
+                err.message = redact(err.message, client)
             raise RuntimeError(f"Chat completion request failed: {describe_api_error(err, client)}") from err
         content = extract_response_content(completion)
         # Add the response to the history (content is never None here, a None
