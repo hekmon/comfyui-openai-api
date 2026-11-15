@@ -20,6 +20,22 @@
       "reset": false
     }
   },
+  "5": {
+    "class_type": "OAIAPI_TrimHistory",
+    "_meta": {
+      "title": "Trim History (right after Load Memory)"
+    },
+    "inputs": {
+      "history": [
+        "2",
+        0
+      ],
+      "max_turns": 4,
+      "max_images": 2,
+      "keep_turns": 2,
+      "keep_images": 1
+    }
+  },
   "3": {
     "class_type": "OAIAPI_ChatCompletion",
     "_meta": {
@@ -35,7 +51,7 @@
       "prompt": "Write an image generation prompt for: a cozy wooden cabin in a snowy forest at night. If the conversation already contains a critique of the previous image, use it to improve the previous prompt. Answer with the prompt only, no comment.",
       "system_prompt": "You write concise prompts for a text to image diffusion model.",
       "history": [
-        "2",
+        "5",
         0
       ]
     }
@@ -160,19 +176,6 @@
       ]
     }
   },
-  "5": {
-    "class_type": "OAIAPI_TrimHistory",
-    "_meta": {
-      "title": "Trim History (limits stored images too)"
-    },
-    "inputs": {
-      "history": [
-        "4",
-        1
-      ],
-      "max_turns": 4
-    }
-  },
   "6": {
     "class_type": "OAIAPI_SaveMemory",
     "_meta": {
@@ -181,8 +184,8 @@
     "inputs": {
       "key": "image_feedback",
       "value": [
-        "5",
-        0
+        "4",
+        1
       ]
     }
   },

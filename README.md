@@ -76,8 +76,8 @@ The `Save Memory` and `Load Memory` nodes carry a value from one queued run to t
 
 Example workflows (API format: open them with *Workflow > Open* or drag and drop them in ComfyUI, then set the client `Base URL` and the model name):
 
-- [`examples/memory_chat_loop_api.json`](examples/memory_chat_loop_api.json): a text only chat that remembers the conversation across queued runs. Change the prompt and queue again; tick `Reset` on the `Load Memory` node for one run to start a new conversation.
-- [`examples/memory_image_feedback_loop_api.json`](examples/memory_image_feedback_loop_api.json): a prompt writer generates the image prompt, a vision model critiques the generated image, and the next run writes an improved prompt from that critique. Pick your checkpoint in the `Load Checkpoint` node and use a vision capable model.
+- [`examples/memory_chat_loop_api.json`](examples/memory_chat_loop_api.json): a text only chat that remembers the conversation across queued runs. Change the prompt and queue again; tick `Reset` on the `Load Memory` node for one run to start a new conversation. `Trim History` lets the history grow up to 10 turns (`Max Turns`), then cuts it back to the last 6 (`Keep Turns`): once full, the conversation start changes once every 5 runs instead of on every run.
+- [`examples/memory_image_feedback_loop_api.json`](examples/memory_image_feedback_loop_api.json): a prompt writer generates the image prompt, a vision model critiques the generated image, and the next run writes an improved prompt from that critique. Pick your checkpoint in the `Load Checkpoint` node and use a vision capable model. Each run adds 2 turns (prompt, critique) and 1 image: `Trim History` lets the history grow up to 2 runs (`Max Turns` 4, `Max Images` 2), then cuts it back to the last run (`Keep Turns` 2, `Keep Images` 1), once every 2 runs, so a request never holds more than 6 turns and 3 images.
 
 ## Unloading the model (local servers)
 
