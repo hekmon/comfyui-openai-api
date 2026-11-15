@@ -1,7 +1,7 @@
 [project]
 name = "openai-api"
 description = "Call LLM and VLM from ComfyUI using the OpenAI API standard. Compatible with custom inference servers like Ollama, vLLM or SGLang thru their support of the OpenAI API implementation."
-version = "3.0.0"
+version = "3.1.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 # Numpy and Pillow same as ComfyUI
@@ -14,6 +14,6 @@ Repository = "https://github.com/hekmon/comfyui-openai-api"
 [tool.comfy]
 PublisherId = "hekmon"
 DisplayName = "OpenAI API"
-Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.0.0/res/logo.png"
+Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.1.0/res/logo.png"
 # First ComfyUI release with the V3 node API (comfy_api.latest + comfy_entrypoint)
 requires-comfyui = ">=0.3.48"
