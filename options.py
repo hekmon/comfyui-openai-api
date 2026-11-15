@@ -48,7 +48,7 @@ class _SetOption(io.ComfyNode):
         # ComfyUI passes the inputs by name: the only one left is the value input
         ((input_id, value),) = inputs.items()
         check_options(other_options, cls.define_schema().display_name.removeprefix("OpenAI API - "))
-        options = {} if other_options is None else other_options.get_options_copy()
+        options = other_options.get_options_copy() if other_options is not None else {}
         options[cls.KEY or input_id] = value
         return io.NodeOutput(
             OptionsPayload(options)
@@ -282,11 +282,8 @@ class OptionExtraBody(io.ComfyNode):
         if error is not None:
             raise ValueError(f"Extra Body: {error}")
         check_options(other_options, "Extra Body")
-        if other_options is None:
-            options = json.loads(extra_body)
-        else:
-            options = other_options.get_options_copy()
-            options.update(json.loads(extra_body))
+        options = other_options.get_options_copy() if other_options is not None else {}
+        options.update(json.loads(extra_body))
         return io.NodeOutput(
             OptionsPayload(options)
         )
