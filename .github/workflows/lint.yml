@@ -4,6 +4,8 @@ on:
     branches:
       - main
   pull_request:
+  # Called by the publish workflow: no release without a clean lint
+  workflow_call:
 
 permissions:
   contents: read

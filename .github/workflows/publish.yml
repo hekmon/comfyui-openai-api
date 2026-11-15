@@ -9,8 +9,15 @@ permissions:
   issues: write
 
 jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+    permissions:
+      contents: read
+
   publish-node:
     name: Publish Custom Node to registry
+    needs: lint
     runs-on: ubuntu-latest
     # Tag pushes skip pre-release tags (e.g. v3.0.0-rc1): the registry has no
     # prerelease concept and would serve it as the default install for all users.
