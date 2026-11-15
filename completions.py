@@ -257,6 +257,11 @@ class ChatCompletion(io.ComfyNode):
                 images: torch.Tensor | None = None,
                 force_regen: bool = False,
                 ) -> io.NodeOutput:
+        # Linked inputs are not checked by validate_inputs (None there)
+        if not isinstance(prompt, str) or prompt == "":
+            raise ValueError(
+                "Chat Completion: the prompt is empty (or not a text). If it comes from a "
+                "Load Memory node, connect its Default input for the first run.")
         # Handle options
         seed: int | None = None
         temperature: float | None = None
