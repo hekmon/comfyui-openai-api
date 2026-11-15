@@ -12,7 +12,7 @@ from comfy_api.latest import io
 from . import aioloop
 from .apierrors import describe_api_error
 from .interrupt import run_interruptible
-from .iotypes import ParamClient, check_client
+from .iotypes import ParamClient, check_client, check_input
 
 
 logger = logging.getLogger(__name__)
@@ -196,9 +196,12 @@ class UnloadModel(io.ComfyNode):
                       timeout: float,
                       fail_on_error: bool,
                 ) -> io.NodeOutput:
-        model = (model or "").strip()
         try:
             check_client(client, "Unload Model")
+            # A linked model can be None (nothing stored): no model, which
+            # tabbyAPI does not need
+            check_input(model, str, "Model", "a text", "Unload Model")
+            model = (model or "").strip()
             error = check_unload_inputs(server_type, model)
             if error is not None:
                 raise ValueError(error)

@@ -325,6 +325,10 @@ class ChatCompletion(io.ComfyNode):
             raise ValueError(
                 "Chat Completion: the prompt is empty (or not a text). If it comes from a "
                 "Load Memory node, connect its Default input for the first run.")
+        if not isinstance(model, str) or model == "":
+            raise ValueError(
+                "Chat Completion: the model is empty (or not a text). If it comes from a "
+                "Load Memory node, connect its Default input for the first run.")
         check_input(system_prompt, str, "System Prompt", "a text", "Chat Completion")
         check_history(history, "Chat Completion")
         check_options(options, "Chat Completion")
