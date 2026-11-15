@@ -212,7 +212,7 @@ class UnloadModel(io.ComfyNode):
             model = (model or "").strip()
             error = check_unload_inputs(server_type, model)
             if error is not None:
-                raise ValueError(error)
+                raise ValueError(f"Unload Model: {error}")
             await unload_model(client, server_type, model, timeout)
             logger.info("%s: model %s unloaded", server_type, model or "(current)")
         except comfy.model_management.InterruptProcessingException:
