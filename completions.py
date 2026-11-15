@@ -59,6 +59,21 @@ def _response_body_snippet(response: Any, max_len: int = 300) -> str:
     return text[:max_len] + ("..." if len(text) > max_len else "")
 
 
+def _connection_error_reason(err: BaseException) -> BaseException:
+    """The most telling cause of a connection error. The async HTTP client
+    wraps the OS error (e.g. "[Errno 111] Connect call failed") in generic
+    ones ("All connection attempts failed"): prefer it when there is one."""
+    first = err.__cause__ or err.__context__ or err
+    seen: set[int] = set()
+    current: BaseException | None = first
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, OSError) and current.errno is not None:
+            return current
+        current = current.__cause__ or current.__context__
+    return first
+
+
 def describe_api_error(err: Exception, client: AsyncOpenAI) -> str:
     """A clear error message for a failed request: method, URL, status, an
     excerpt of the answer and a hint. Never includes the request headers."""
@@ -81,9 +96,10 @@ def describe_api_error(err: Exception, client: AsyncOpenAI) -> str:
             message += f". Hint: {hint}"
         return redact(message, client)
     if isinstance(err, openai.APIConnectionError):
-        reason = err.__cause__ or err.__context__ or err
+        reason = _connection_error_reason(err)
         kind = "timed out" if isinstance(err, openai.APITimeoutError) else "failed"
-        return redact(f"cannot reach {client.base_url}: the connection {kind} ({type(reason).__name__}: {reason})", client)
+        detail = f"{type(reason).__name__}: {reason}" if str(reason) else type(reason).__name__
+        return redact(f"cannot reach {client.base_url}: the connection {kind} ({detail})", client)
     return redact(str(err), client)
 
 
