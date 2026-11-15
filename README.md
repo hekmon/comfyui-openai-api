@@ -54,6 +54,15 @@ Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compa
 
 Limits a history to its last `Max Turns` turns. The leading system/developer message is kept. A turn starts at a user message and includes the answers that follow it, so an exchange is never split and the first kept message (after the system one) is always a user message. An empty input (`None`) is passed through as is.
 
+### Trim Images node
+
+Limits the number of images of a history, for servers that accept only a few images per conversation (e.g. a local server limited to 8). Typical loop: `Load Memory` -> `Trim Images` -> chat completion (with a new image) -> `Save Memory`.
+
+- Only the images already in the history are counted, not the ones the next chat completion node adds in the current turn: for a server limit of 8 images and 1 new image per turn, set `Max Images` to 7.
+- Up to `Max Images` images, the history is passed through unchanged. Above, the oldest images are removed so that `Trim To` remain. `Trim To` must not be greater than `Max Images`; both default to 7.
+- Only the images are removed: every message and its text are kept, in order. A message left without any content gets the text `[image removed]`, so that the conversation stays valid for the server. An empty input (`None`) is passed through as is.
+- **Server prompt cache**: local servers (llama.cpp, vLLM...) reuse the start of the conversation they already processed (prefix cache). Removing an old image changes that start: the server processes the whole conversation again, re-encoding the remaining images, which can take a while. With `Trim To` equal to `Max Images`, this happens on every turn once the limit is reached. A lower `Trim To` makes it happen less often, at the cost of fewer images kept: with `Max Images` 7, `Trim To` 3 and 1 new image per turn, once every 5 turns. `Trim History` has the same effect on every run where it drops a turn.
+
 ## Memory (looping workflows)
 
 The `Save Memory` and `Load Memory` nodes carry a value from one queued run to the next: an answer, an image analysis, a whole conversation history... Typical loop: generate an image, analyse it with a chat completion, save the analysis (or the history), and on the next run load it to improve the next prompt.
@@ -64,7 +73,7 @@ The `Save Memory` and `Load Memory` nodes carry a value from one queued run to t
 - If a `Save Memory` and a `Load Memory` use the same key but are not connected to each other (directly or not), their execution order in a run is undefined. Connect the loop as `Load Memory` -> ... -> `Save Memory`.
 - `Reset` wipes the key and returns nothing (or `Default`) for this run. **Untick it afterwards**, otherwise the key is wiped on every run.
 - The memory is a helper, not a database: it is kept in RAM only, shared by every prompt and workflow using the same key, and lost when ComfyUI restarts.
-- Stored histories grow with every run: put a `Trim History` node before `Save Memory`.
+- Stored histories grow with every run: put a `Trim History` node before `Save Memory`. If your server limits the number of images per conversation, also put a `Trim Images` node between `Load Memory` and the chat completion node that adds the new image.
 
 Example workflows (API format: open them with *Workflow > Open* or drag and drop them in ComfyUI, then set the client `Base URL` and the model name):
 
