@@ -117,27 +117,29 @@ def effective_keep(max_turns: int, max_images: int, keep_turns: int, keep_images
 
 def trim_history(messages: list[ChatCompletionMessageParam], max_turns: int, max_images: int = -1,
                  keep_turns: int = -1, keep_images: int = -1) -> list[ChatCompletionMessageParam]:
-    """The coordinated cut of Trim History. Nothing is cut while the history
-    holds at most max_turns turns and (unless max_images is -1) at most
-    max_images images. Above either limit, the oldest turns are dropped so
-    that keep_turns remain, then the oldest images of the remaining turns so
-    that keep_images remain (never when max_images is -1). The Keep values
-    are the node inputs (-1, above their Max value...), made effective here
-    (effective_keep). Either way, the leading system/developer message is
-    kept and the orphan replies before the first user message are dropped.
+    """The cuts of Trim History, each limit on its own. Above max_turns turns,
+    the oldest turns are dropped so that keep_turns remain. Then, above
+    max_images images in the kept turns (never when max_images is -1), the
+    oldest images are removed so that keep_images remain. Within a limit,
+    nothing is cut on that axis. The Keep values are the node inputs (-1,
+    above their Max value...), made effective here (effective_keep). Either
+    way, the leading system/developer message is kept and the orphan replies
+    before the first user message are dropped.
     Returns a new list, the input messages are not modified."""
     head, rest, turn_starts = _split_turns(messages)
     if not turn_starts:
         return head  # no turn: only orphan replies after the instructions
-    # The orphan replies before the first user message are always dropped,
-    # their images do not count
-    turns = rest[turn_starts[0]:]
-    if len(turn_starts) <= max_turns and not 0 <= max_images < count_images(turns):
-        return head + turns  # within both limits: nothing to cut
     keep_turns, keep_images, _ = effective_keep(max_turns, max_images, keep_turns, keep_images)
-    kept = trim_messages(messages, keep_turns)
+    if len(turn_starts) > max_turns:
+        kept = trim_messages(messages, keep_turns)
+    else:
+        # The orphan replies before the first user message are always dropped
+        kept = head + rest[turn_starts[0]:]
+    # Counted in the kept turns: the images of the dropped turns are gone.
     # keep_images is -1 (no image cut) exactly when max_images is -1
-    return keep_last_images(kept, keep_images) if keep_images >= 0 else kept
+    if 0 <= max_images < count_images(kept):
+        return keep_last_images(kept, keep_images)
+    return kept
 
 
 def check_trim_inputs(max_turns: int, max_images: int, keep_turns: int, keep_images: int) -> str | None:
@@ -152,12 +154,12 @@ def check_trim_inputs(max_turns: int, max_images: int, keep_turns: int, keep_ima
 
 
 DESCRIPTION = (
-    "Limits a conversation history to its last turns and, optionally, its last images. Why a single node: "
-    "every cut changes the start of the conversation, so the server loses its prompt cache and reprocesses "
-    "everything, images included; cutting turns and images together costs one cache loss per cut instead of "
-    "two. Nothing changes up to Max Turns and Max Images; above either, the oldest turns are dropped down to "
-    "Keep Turns, then the oldest images down to Keep Images. The Keep values (advanced inputs) leave a margin "
-    "so cuts happen less often (e.g. Max Images 7, Keep Images 3, 1 image per run: one cut every 5 runs). "
+    "Limits a conversation history to its last turns and, optionally, its last images, each with its own "
+    "limit. Above Max Turns turns, the oldest turns are dropped down to Keep Turns; above Max Images images, "
+    "the oldest images are removed down to Keep Images (their text stays). Every cut changes the start of the "
+    "conversation, so the server loses its prompt cache and reprocesses everything, images included: the Keep "
+    "values (advanced inputs) leave a margin so cuts happen less often (e.g. Max Images 7, Keep Images 3, "
+    "1 image per run: one cut every 5 runs). "
     "Place it right after Load Memory (Load Memory -> Trim History -> Chat Completion -> Save Memory) and "
     "size it so that what it keeps plus what one run adds fits the server. The leading system message is "
     "kept, an exchange is never split, and a message emptied of its images gets the text [image removed]."
@@ -175,13 +177,14 @@ MAX_IMAGES_TOOLTIP = (
     "Completion adds in this run: for a server limited to 8 images and 1 new image per run, set 7."
 )
 KEEP_TURNS_TOOLTIP = (
-    "Number of turns kept by a cut. -1: same as Max Turns. A cut happens when the history holds more than Max "
-    "Turns turns or more than Max Images images. Lower than Max Turns, it leaves a margin: the history grows "
+    "Number of turns kept when the history holds more than Max Turns turns. -1: same as Max Turns. Lower than "
+    "Max Turns, it leaves a margin: the history grows "
     "again for several runs before the next cut, so the server loses its prompt cache less often, at the cost "
     "of a shorter history right after a cut. 0 keeps no turn. Capped at Max Turns."
 )
 KEEP_IMAGES_TOOLTIP = (
-    "Number of images kept by a cut, the most recent ones. -1: same as Max Images. Lower than Max Images, it "
+    "Number of images kept when the history holds more than Max Images images, the most recent ones. -1: "
+    "same as Max Images. Lower than Max Images, it "
     "leaves a margin so that cuts happen less often: e.g. Max Images 7 and Keep Images 3 with 1 new image per "
     "run cut once every 5 runs instead of every run. Capped at Max Images, ignored when Max Images is -1."
 )
