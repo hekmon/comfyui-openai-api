@@ -122,20 +122,22 @@ def trim_history(messages: list[ChatCompletionMessageParam], max_turns: int, max
     max_images images. Above either limit, the oldest turns are dropped so
     that keep_turns remain, then the oldest images of the remaining turns so
     that keep_images remain (never when max_images is -1). The Keep values
-    are the effective ones (effective_keep). Either way, the leading
-    system/developer message is kept and the orphan replies before the first
-    user message are dropped (trim_messages).
+    are the node inputs (-1, above their Max value...), made effective here
+    (effective_keep). Either way, the leading system/developer message is
+    kept and the orphan replies before the first user message are dropped.
     Returns a new list, the input messages are not modified."""
+    head, rest, turn_starts = _split_turns(messages)
+    if not turn_starts:
+        return head  # no turn: only orphan replies after the instructions
+    # The orphan replies before the first user message are always dropped,
+    # their images do not count
+    turns = rest[turn_starts[0]:]
+    if len(turn_starts) <= max_turns and not 0 <= max_images < count_images(turns):
+        return head + turns  # within both limits: nothing to cut
     keep_turns, keep_images, _ = effective_keep(max_turns, max_images, keep_turns, keep_images)
-    _, rest, turn_starts = _split_turns(messages)
-    # Images of the turns (the orphan replies before the first user message
-    # are dropped either way, their images do not count)
-    images = count_images(rest[turn_starts[0]:]) if turn_starts else 0
-    cut = len(turn_starts) > max_turns or 0 <= max_images < images
-    trimmed = trim_messages(messages, keep_turns if cut else max_turns)
-    if cut and max_images >= 0:
-        trimmed = keep_last_images(trimmed, keep_images)
-    return trimmed
+    kept = trim_messages(messages, keep_turns)
+    # keep_images is -1 (no image cut) exactly when max_images is -1
+    return keep_last_images(kept, keep_images) if keep_images >= 0 else kept
 
 
 def check_trim_inputs(max_turns: int, max_images: int, keep_turns: int, keep_images: int) -> str | None:
