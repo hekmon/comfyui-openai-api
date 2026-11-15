@@ -95,7 +95,7 @@ The `Unload Model` node asks a local inference server to unload its model, e.g. 
 | ollama | `POST /api/generate` with `keep_alive: 0` | yes, automatic | none |
 | LM Studio | `POST /api/v1/models/unload` | yes, with *Just-in-time model loading* (enabled by default) | the API token in `OPENAI_API_KEY` if authentication is enabled |
 | llama.cpp | `POST /models/unload` | yes, unless started with `--no-models-autoload` | router mode only: `llama-server` started without `-m` (`--models-dir`, `--models-preset` or the cache) |
-| Unsloth Studio | `POST /models/unload` (the llama.cpp router call) | only with *Model auto-switch* enabled (*Settings > API*, off by default) | a version from October 2026 or later, and a Studio API key (`sk-unsloth-...`, created under *Settings > API*) in `OPENAI_API_KEY`, or keyless access with `OPENAI_API_KEY` unset |
+| Unsloth Studio | `POST /models/unload` (the llama.cpp router call) | only with *Model auto-switch* enabled (*Settings > API*, off by default) | version 0.1.907 or later, and a Studio API key (`sk-unsloth-...`, created under *Settings > API*) in `OPENAI_API_KEY`, or keyless access with `OPENAI_API_KEY` unset |
 | tabbyAPI | `POST /v1/model/unload` | only with `inline_model_loading: true` in `config.yml`, and the model name of the chat completion must match a folder of its `model_dir` | an admin key in `OPENAI_API_KEY` (unload and inline loading both require it) |
 
 vLLM (sleep mode) and SGLang (memory release) are not supported: after their unload call the next request waits or fails until an explicit wake up / resume call, which would break the next generation.
