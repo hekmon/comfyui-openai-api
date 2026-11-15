@@ -4,6 +4,7 @@ import logging
 import re
 import time
 from typing import Any
+from urllib.parse import urlparse
 
 import torch
 import numpy as np
@@ -39,8 +40,6 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
 _STATUS_HINTS = {
     401: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
     403: "authentication refused: check OPENAI_API_KEY (and that the server expects a Bearer token)",
-    404: "the Base URL probably lacks the API prefix (usually /v1)",
-    405: "the Base URL probably lacks the API prefix (usually /v1)",
 }
 
 
@@ -69,9 +68,14 @@ def describe_api_error(err: Exception, client: OpenAI) -> str:
         if snippet:
             message += f" ({snippet})"
         hint = _STATUS_HINTS.get(status)
+        if status in (404, 405):
+            # Without any API prefix the route itself is probably wrong. With
+            # one, a 404 usually means an unknown model (ollama, vLLM, OpenAI)
+            if urlparse(str(client.base_url)).path in ("", "/"):
+                hint = "the Base URL probably lacks the API prefix (usually /v1)"
+            else:
+                hint = "check the model name and the Base URL"
         if hint is not None:
-            if status in (404, 405):
-                hint += f": the request went to {request.url}"
             message += f". Hint: {hint}"
         return redact(message, client)
     if isinstance(err, openai.APIConnectionError):
