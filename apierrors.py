@@ -73,18 +73,20 @@ def describe_api_error(err: Exception, client: AsyncOpenAI, hints: dict[int, str
         snippet = _response_body_snippet(err.response)
         if snippet:
             message += f" ({snippet})"
-        hint = _STATUS_HINTS.get(status)
-        if status in (404, 405):
+        # The first matching hint wins
+        if hints and status in hints:
+            hint = hints[status]
+        elif is_redirect:
+            hint = "check the Base URL"
+        elif status in (404, 405):
             # Without any API prefix the route itself is probably wrong. With
             # one, a 404 usually means an unknown model (ollama, vLLM, OpenAI)
             if urlparse(str(client.base_url)).path in ("", "/"):
                 hint = "the Base URL probably lacks the API prefix (usually /v1)"
             else:
                 hint = "check the model name and the Base URL"
-        if is_redirect:
-            hint = "check the Base URL"
-        if hints and status in hints:
-            hint = hints[status]
+        else:
+            hint = _STATUS_HINTS.get(status)
         if hint is not None:
             message += f". Hint: {hint}"
         return redact(message, client)
