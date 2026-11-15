@@ -2,7 +2,7 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 
 from comfy_api.latest import io
 
-from .iotypes import ParamHistory, HistoryPayload
+from .iotypes import ParamHistory, HistoryPayload, check_history
 
 
 _INSTRUCTIONS_ROLES = ("system", "developer")
@@ -66,4 +66,5 @@ class TrimHistory(io.ComfyNode):
         # as "no history" instead of failing
         if history is None:
             return io.NodeOutput(None)
+        check_history(history, "Trim History")
         return io.NodeOutput(HistoryPayload(trim_messages(history.get_msgs_copy(), max_turns)))

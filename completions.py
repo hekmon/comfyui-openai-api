@@ -19,7 +19,7 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 from comfy_api.latest import io, ui
 
 from .client import redact
-from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload
+from .iotypes import ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload, check_history
 
 
 logger = logging.getLogger(__name__)
@@ -262,6 +262,7 @@ class ChatCompletion(io.ComfyNode):
             raise ValueError(
                 "Chat Completion: the prompt is empty (or not a text). If it comes from a "
                 "Load Memory node, connect its Default input for the first run.")
+        check_history(history, "Chat Completion")
         # Handle options
         seed: int | None = None
         temperature: float | None = None
