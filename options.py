@@ -370,7 +370,7 @@ class OptionReasoningEffort(io.ComfyNode):
                 io.Combo.Input(
                     id="reasoning_effort",
                     display_name="Reasoning Effort",
-                    tooltip="Backends and models support different subsets of these values (e.g. gpt-oss: low/medium/high): an unsupported value may be rejected or ignored by the server. 'none' is sent literally as the \"none\" string (useful on vLLM to disable thinking on some models). Use the Extra Body node to send any other value.",
+                    tooltip="Backends and models support different subsets of these values (e.g. gpt-oss: low/medium/high): an unsupported value may be rejected or ignored by the server. 'none' is sent literally as the \"none\" string (on vLLM, SGLang and llama.cpp it disables thinking for models whose chat template supports it). Use the Extra Body node to send any other value.",
                     options=["none", "minimal", "low", "medium", "high", "xhigh", "max"],
                     default="medium",
                 ),
