@@ -47,6 +47,21 @@ def read_api_key() -> str:
     return api_key
 
 
+def check_base_url(base_url: str) -> str | None:
+    """The error message for an unusable Base URL, None if valid. Never
+    let an empty one through: the SDK would silently replace it with the
+    OPENAI_BASE_URL environment variable or https://api.openai.com/v1."""
+    if base_url.strip() == "":
+        return "the Base URL is empty"
+    try:
+        scheme = urlparse(base_url).scheme
+    except ValueError as e:
+        return f"invalid URL: {e}"
+    if scheme not in ("http", "https"):
+        return "URL scheme must be http or https"
+    return None
+
+
 async def _build_client(api_key: str, base_url: str, max_retries: int, timeout: int) -> AsyncOpenAI:
     # A coroutine only to run on the API client loop
     return AsyncOpenAI(
@@ -103,18 +118,21 @@ class Client(io.ComfyNode):
 
     @classmethod
     def validate_inputs(cls, base_url: str | None) -> bool | str:
-        # base_url can be None if coming from another node
-        if base_url is not None:
-            try:
-                result = urlparse(base_url)
-                if result.scheme not in ["http", "https"]:
-                    return "URL scheme must be http or https"
-            except ValueError as e:
-                return f"invalid URL: {e}"
-        return True
+        # None when coming from another node: checked at execution
+        if base_url is None:
+            return True
+        return check_base_url(base_url) or True
 
     @classmethod
     async def execute(cls, base_url: str, max_retries: int, timeout: int) -> io.NodeOutput:
+        # A linked Base URL is not checked by validate_inputs (None there)
+        if not isinstance(base_url, str) or base_url.strip() == "":
+            raise ValueError(
+                "Client: the Base URL is empty (or not a text). If it comes from a "
+                "Load Memory node, connect its Default input for the first run.")
+        error = check_base_url(base_url)
+        if error is not None:
+            raise ValueError(f"Client: {error}")
         # No API prefix at all: fine for llama.cpp, a 404/405 for most other
         # servers. Only a warning (once per URL), never added automatically.
         if urlparse(base_url).path in ("", "/") and base_url not in _warned_base_urls:
