@@ -9,6 +9,9 @@ ParamClient = io.Custom("OAIAPI_CLIENT")
 ParamHistory = io.Custom("OAIAPI_HISTORY")
 ParamOptions = io.Custom("OAIAPI_OPTIONS")
 
+# Roles of the leading instructions message of a conversation
+INSTRUCTIONS_ROLES = ("system", "developer")
+
 
 class HistoryPayload:
     def __init__(self, history: list[ChatCompletionMessageParam] | None = None) -> None:

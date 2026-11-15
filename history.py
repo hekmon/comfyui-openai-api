@@ -2,10 +2,7 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 
 from comfy_api.latest import io
 
-from .iotypes import ParamHistory, HistoryPayload, check_history
-
-
-_INSTRUCTIONS_ROLES = ("system", "developer")
+from .iotypes import INSTRUCTIONS_ROLES, ParamHistory, HistoryPayload, check_history
 
 
 def trim_messages(messages: list[ChatCompletionMessageParam], max_turns: int) -> list[ChatCompletionMessageParam]:
@@ -16,7 +13,7 @@ def trim_messages(messages: list[ChatCompletionMessageParam], max_turns: int) ->
     Returns a new list, the input one is not modified."""
     head: list[ChatCompletionMessageParam] = []
     rest = messages
-    if rest and rest[0].get("role") in _INSTRUCTIONS_ROLES:
+    if rest and rest[0].get("role") in INSTRUCTIONS_ROLES:
         head = [rest[0]]
         rest = rest[1:]
     turn_starts = [i for i, msg in enumerate(rest) if msg.get("role") == "user"]
