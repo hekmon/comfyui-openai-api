@@ -18,11 +18,19 @@ def has_no_api_prefix(base_url: str) -> bool:
     return urlparse(base_url).path in ("", "/")
 
 
+# The API key sent when OPENAI_API_KEY is unset: keyless servers (vLLM,
+# llama.cpp...) require an Authorization header but do not validate its
+# value, and Unsloth Studio in keyless mode only accepts a few well known
+# dummy values ("not-needed", "lm-studio", "ollama", "no-key-required").
+KEYLESS_API_KEY = "not-needed"
+
+
 def redact(text: str, client: AsyncOpenAI) -> str:
     """Strip the client API key from a text (error message, server answer...):
-    some servers and proxies echo the received credentials in their errors."""
+    some servers and proxies echo the received credentials in their errors.
+    The keyless placeholder is no secret, and too common a word to replace."""
     api_key = getattr(client, "api_key", None)
-    if isinstance(api_key, str) and len(api_key) > 3:
+    if isinstance(api_key, str) and len(api_key) > 3 and api_key != KEYLESS_API_KEY:
         text = text.replace(api_key, "***")
     return text
 

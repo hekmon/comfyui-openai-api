@@ -112,7 +112,7 @@ How to configure:
 
 - **Official OpenAI API or any authenticated endpoint**: set the environment variable before starting ComfyUI, e.g. `export OPENAI_API_KEY=sk-...` (Linux/macOS) or `setx OPENAI_API_KEY sk-...` then restart your shell (Windows). In Docker, pass it with `-e OPENAI_API_KEY=sk-...`.
 - **ComfyUI Desktop**: an installation can also define its own environment variables, which override the system ones: make sure `OPENAI_API_KEY` there holds the key only. The client node refuses a key with non ASCII or control characters (e.g. pasted text) with an explicit error, without showing it.
-- **Keyless inference servers** (vLLM, some Ollama setups, etc.): those servers require an `Authorization` header but do not validate its value. If the environment variable is not set, the client automatically falls back to the `-` placeholder, so nothing to configure.
+- **Keyless inference servers** (vLLM, llama.cpp, some Ollama setups, Unsloth Studio with keyless access, etc.): those servers require an `Authorization` header but do not validate its value (Unsloth Studio only accepts a few well known dummy values). If the environment variable is not set, the client automatically falls back to the `not-needed` placeholder, so nothing to configure.
 - **Imported workflows**: the key is sent to whatever `Base URL` the workflow's client node uses, so check it before running a workflow you did not write.
 - **Defense in depth**: if you generate images to share, launch ComfyUI with `--disable-metadata` (or enable *Settings > Server-Config > Disable saving prompt metadata in files* in ComfyUI Desktop) to strip workflow metadata from output files entirely.
 

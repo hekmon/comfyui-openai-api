@@ -6,17 +6,14 @@ from openai import AsyncOpenAI
 from comfy_api.latest import io
 
 from . import aioloop
-from .apierrors import has_no_api_prefix
+from .apierrors import KEYLESS_API_KEY, has_no_api_prefix
 from .iotypes import ParamClient
 
 # API keys must never travel through widget inputs: ComfyUI serializes every
 # widget value (even from bypassed nodes) into the `prompt` and `workflow`
 # metadata chunks of generated images and exported workflows, which would leak
 # them. The key is instead read from the OPENAI_API_KEY environment variable
-# at execution time. The "-" placeholder keeps keyless inference servers
-# (vLLM, etc) working: they require an Authorization header but do not
-# validate its value.
-_DEFAULT_KEYLESS_API_KEY = "-"
+# at execution time, with a placeholder for keyless servers (KEYLESS_API_KEY).
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +31,7 @@ def read_api_key() -> str:
     # never part of a key
     api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
     if api_key == "":
-        return _DEFAULT_KEYLESS_API_KEY
+        return KEYLESS_API_KEY
     invalid_at = next((i for i, c in enumerate(api_key) if not " " <= c <= "~"), None)
     if invalid_at is not None:
         raise ValueError(
