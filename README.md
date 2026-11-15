@@ -52,16 +52,15 @@ Use either `max_tokens` or `max_completion_tokens`, not both. Older OpenAI-compa
 
 ### Trim History node
 
-Limits a history to its last `Max Turns` turns. The leading system/developer message is kept. A turn starts at a user message and includes the answers that follow it, so an exchange is never split and the first kept message (after the system one) is always a user message. An empty input (`None`) is passed through as is.
+Keeps a history within a number of turns and, optionally, of images (for servers that accept only a few images per conversation, or to save context). In a loop, put it **right after `Load Memory`**: `Load Memory` -> `Trim History` -> chat completion (`History` input) -> `Save Memory`. The chat completion node outputs the trimmed history it received plus its new turn, so `Save Memory` stores a bounded window.
 
-### Trim Images node
-
-Limits the number of images of a history, for servers that accept only a few images per conversation (e.g. a local server limited to 8). Typical loop: `Load Memory` -> `Trim Images` -> chat completion (with a new image) -> `Save Memory`.
-
-- Only the images already in the history are counted, not the ones the next chat completion node adds in the current turn: for a server limit of 8 images and 1 new image per turn, set `Max Images` to 7.
-- Up to `Max Images` images, the history is passed through unchanged. Above, the oldest images are removed so that `Trim To` remain. `Trim To` must not be greater than `Max Images`; both default to 7.
-- Only the images are removed: every message and its text are kept, in order. A message left without any content gets the text `[image removed]`, so that the conversation stays valid for the server. An empty input (`None`) is passed through as is.
-- **Server prompt cache**: local servers (llama.cpp, vLLM...) reuse the start of the conversation they already processed (prefix cache). Removing an old image changes that start: the server processes the whole conversation again, re-encoding the remaining images, which can take a while. With `Trim To` equal to `Max Images`, this happens on every turn once the limit is reached. A lower `Trim To` makes it happen less often, at the cost of fewer images kept: with `Max Images` 7, `Trim To` 3 and 1 new image per turn, once every 5 turns. `Trim History` has the same effect on every run where it drops a turn.
+- **Why a single node**: local servers (llama.cpp, vLLM...) reuse the start of the conversation they already processed (prompt or prefix cache). Every cut changes that start: the server then processes the whole conversation again, re-encoding the remaining images, which can take a while. Cutting turns and images together, in one node, costs one cache loss per cut instead of two at different runs.
+- `Max Turns` (default 10) and `Max Images` (default -1: no image limit): up to these numbers, the history is passed through unchanged. A cut happens when the history holds more than `Max Turns` turns or more than `Max Images` images: the oldest turns are dropped so that `Keep Turns` remain, then the oldest images of the remaining turns so that `Keep Images` remain. `Max Images` 0 keeps no image at all, e.g. only the text of the image analyses.
+- `Keep Turns` and `Keep Images` are advanced inputs: with the *Nodes 2.0* display, click *Show advanced inputs* at the bottom of the node to see them (the classic display shows them with the other widgets). Both default to -1, the `Max` value: once the limit is reached, every run cuts. Lower values leave a margin so that cuts happen less often, at the cost of a shorter history right after a cut: with `Max Images` 7, `Keep Images` 3 and 1 new image per run, one cut every 5 runs. A `Keep` value greater than its `Max` value is capped at it, and `Keep Images` is ignored when `Max Images` is -1 (no image is ever removed): no error, since these inputs are often hidden and the node runs in unattended loops, but a warning in the console says which value was capped or ignored.
+- **Budget**: only what is already in the history the node receives is counted, not what the next chat completion nodes add in this run. You know how many turns and images one run adds at most: what the node keeps plus what one run adds must fit what the server accepts (images) and what you want to send (turns). E.g. a server limited to 8 images per conversation with 1 new image per run: `Max Images` 7.
+- A turn starts at a user message and includes the answers that follow it, so an exchange is never split and the first kept message (after the system one) is always a user message. The leading system/developer message is kept.
+- Only the images are removed from the kept turns (oldest first), never their text: a message left without any content gets the text `[image removed]`, so that the conversation stays valid for the server. An empty input (`None`) is passed through as is.
+- Workflows saved with version 3.1.0 keep working unchanged: the new inputs default to no image limit and no margin.
 
 ## Memory (looping workflows)
 
@@ -73,7 +72,7 @@ The `Save Memory` and `Load Memory` nodes carry a value from one queued run to t
 - If a `Save Memory` and a `Load Memory` use the same key but are not connected to each other (directly or not), their execution order in a run is undefined. Connect the loop as `Load Memory` -> ... -> `Save Memory`.
 - `Reset` wipes the key and returns nothing (or `Default`) for this run. **Untick it afterwards**, otherwise the key is wiped on every run.
 - The memory is a helper, not a database: it is kept in RAM only, shared by every prompt and workflow using the same key, and lost when ComfyUI restarts.
-- Stored histories grow with every run: put a `Trim History` node before `Save Memory`. If your server limits the number of images per conversation, also put a `Trim Images` node between `Load Memory` and the chat completion node that adds the new image.
+- Stored histories grow with every run: put a `Trim History` node right after `Load Memory`, before the chat completion node (see [Trim History node](#trim-history-node)). It limits the turns and, if your server limits the number of images per conversation, the images.
 
 Example workflows (API format: open them with *Workflow > Open* or drag and drop them in ComfyUI, then set the client `Base URL` and the model name):
 
