@@ -377,9 +377,10 @@ class ChatCompletion(io.ComfyNode):
         )
         # Handle usage stats as text preview
         stats = format_usage(completion.usage)
-        # Also printed to the console, after the log line of the HTTP request
+        # Also logged (shown in the console at the default INFO level), after
+        # the log line of the HTTP request
         if stats:
-            print(stats)
+            logger.info("%s", stats)
         # Return the response and the history and the stats for the UI
         return io.NodeOutput(
             content,
