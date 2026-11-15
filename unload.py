@@ -180,11 +180,12 @@ class UnloadModel(io.ComfyNode):
 
     @classmethod
     def validate_inputs(cls, server_type: str | None, model: str | None) -> bool | str:
-        # None when coming from another node: checked at execution
-        # (an unknown server type is already rejected by the Combo input)
-        if server_type is not None and model is not None and server_type in SERVER_TYPES:
-            return check_unload_inputs(server_type, model.strip()) or True
-        return True
+        # None when coming from another node: checked at execution. Listing
+        # server_type here disables the ComfyUI check of the Combo options:
+        # check_unload_inputs rejects an unknown server type instead.
+        if server_type is None or model is None:
+            return True
+        return check_unload_inputs(server_type, model.strip()) or True
 
     @classmethod
     async def execute(cls,
