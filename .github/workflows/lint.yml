@@ -1,0 +1,23 @@
+name: Lint
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      # Pinned: a new ruff version may add rules or change their behaviour.
+      # The rule set and the target Python version are in pyproject.toml.
+      - name: Lint with ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.17.5"

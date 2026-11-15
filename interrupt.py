@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Awaitable, TypeVar
+from collections.abc import Awaitable
+from typing import Any, TypeVar
 
 import comfy.model_management
 

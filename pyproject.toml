@@ -17,3 +17,14 @@ DisplayName = "OpenAI API"
 Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.1.0/res/logo.png"
 # First ComfyUI release with the V3 node API (comfy_api.latest + comfy_entrypoint)
 requires-comfyui = ">=0.3.48"
+
+[tool.ruff]
+# Same as requires-python, explicit so that it never drifts: ruff also reports
+# any syntax newer than this version
+target-version = "py310"
+
+[tool.ruff.lint]
+# An explicit rule set: ruff 0.17 enables a much larger default one (import
+# order, naming rules failing on the hyphenated repository directory...).
+# Long lines (tooltips, descriptions) are accepted.
+select = ["E4", "E7", "E9", "F", "B", "ASYNC", "UP", "SIM"]
