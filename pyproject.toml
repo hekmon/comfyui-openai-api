@@ -1,6 +1,6 @@
 [project]
 name = "openai-api"
-description = "Call LLM and VLM from ComfyUI using the OpenAI API standard. Compatible with custom inference servers like Ollama, vLLM or SGLang thru their support of the OpenAI API implementation."
+description = "Call LLMs and VLMs from ComfyUI with any OpenAI compatible chat completions API: local servers (llama.cpp, vLLM, SGLang, Ollama, LM Studio, tabbyAPI, Unsloth Studio...) or cloud providers. Text and image inputs, multi-turn history with memory loops, and model unloading for local servers."
 version = "3.2.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
