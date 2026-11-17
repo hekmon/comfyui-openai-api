@@ -1,3 +1,5 @@
+# Copy of the pyproject.toml dependencies (the source of truth), for manual
+# installs: keep both in sync
 openai>=2.7.1,<4.0.0
 
 # Same as ComfyUI
