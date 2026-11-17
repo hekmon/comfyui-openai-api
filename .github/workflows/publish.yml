@@ -44,8 +44,14 @@ jobs:
             echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${pyproject_version}"
             exit 1
           fi
+      # comfy-cli reads the changelog shown in the registry Updates section of
+      # the version from this variable (the action has no input for it): link
+      # the GitHub release notes of the tag, none for a manual branch run
       - name: Publish Custom Node
         uses: Comfy-Org/publish-node-action@v1
+        env:
+          COMFY_NODE_CHANGELOG: >-
+            ${{ github.ref_type == 'tag' && format('Release notes: https://github.com/{0}/releases/tag/{1}', github.repository, github.ref_name) || '' }}
         with:
           ## Add your own personal access token to your Github Repository secrets and reference it here.
           personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
