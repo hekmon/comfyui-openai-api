@@ -124,9 +124,7 @@ Requires ComfyUI 0.10.0 or later.
 
 ### ComfyUI Manager
 
-Search for `OpenAI API` in the `Custom Nodes Manager` and install it.
-
-![Entry in the ComfyUI manager](res/comfymanager.png)
+Search for `OpenAI API` in the `Custom Nodes Manager` and install it. Its page on the Comfy registry: [registry.comfy.org/nodes/openai-api](https://registry.comfy.org/nodes/openai-api).
 
 ### Manually
 
