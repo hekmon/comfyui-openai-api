@@ -6,6 +6,9 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 # Numpy and Pillow same as ComfyUI
 dependencies = ["openai>=2.7.1,<4.0.0", "numpy>=1.25.0", "Pillow"]
+# Pure Python, runs wherever ComfyUI does. No GPU classifier: the nodes
+# need no accelerator (inference runs on the API server)
+classifiers = ["Operating System :: OS Independent"]
 
 [project.urls]
 Repository = "https://github.com/hekmon/comfyui-openai-api"
