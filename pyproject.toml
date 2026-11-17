@@ -15,6 +15,7 @@ Repository = "https://github.com/hekmon/comfyui-openai-api"
 PublisherId = "hekmon"
 DisplayName = "OpenAI API"
 Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.2.0/res/logo.png"
+Banner = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.2.0/res/banner.png"
 # First ComfyUI release with the advanced node inputs (advanced=True, shown
 # under "Show advanced inputs")
 requires-comfyui = ">=0.10.0"
