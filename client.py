@@ -1,8 +1,7 @@
 import logging
-import os
 from urllib.parse import urlparse
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 from comfy_api.latest import io
 
 from . import aioloop
@@ -12,8 +11,10 @@ from .iotypes import ParamClient
 # API keys must never travel through widget inputs: ComfyUI serializes every
 # widget value (even from bypassed nodes) into the `prompt` and `workflow`
 # metadata chunks of generated images and exported workflows, which would leak
-# them. The key is instead read from the OPENAI_API_KEY environment variable
-# at execution time, with a placeholder for keyless servers (KEYLESS_API_KEY).
+# them. The key instead comes from the OPENAI_API_KEY environment variable at
+# execution time, with a placeholder for keyless servers (KEYLESS_API_KEY).
+# The variable is read by the OpenAI SDK itself (its documented default when no
+# api_key is given): this module only checks what the SDK picked up.
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +22,15 @@ logger = logging.getLogger(__name__)
 _warned_base_urls: set[str] = set()
 
 
-def read_api_key() -> str:
-    """Read the API key from the OPENAI_API_KEY environment variable, falling
-    back to the keyless placeholder when it is unset or empty. The key ends up
-    in the Authorization HTTP header, which only accepts printable ASCII: fail
-    early with a clear message (never showing the value) instead of an
-    encoding error deep inside the HTTP client."""
+def clean_api_key(api_key: str) -> str:
+    """Clean the API key read by the SDK from the OPENAI_API_KEY environment
+    variable, the keyless placeholder when it is empty. The key ends up in the
+    Authorization HTTP header, which only accepts printable ASCII: fail early
+    with a clear message (never showing the value) instead of an encoding
+    error deep inside the HTTP client."""
     # Surrounding whitespace (e.g. a trailing newline from a copy/paste) is
     # never part of a key
-    api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+    api_key = api_key.strip()
     if api_key == "":
         return KEYLESS_API_KEY
     invalid_at = next((i for i, c in enumerate(api_key) if not " " <= c <= "~"), None)
@@ -60,14 +61,22 @@ def check_base_url(base_url: str) -> str | None:
     return None
 
 
-async def _build_client(api_key: str, base_url: str, max_retries: int, timeout: int) -> AsyncOpenAI:
+async def _build_client(base_url: str, max_retries: int, timeout: int) -> AsyncOpenAI:
     # A coroutine only to run on the API client loop
-    return AsyncOpenAI(
-        api_key=api_key,
-        base_url=base_url,
-        max_retries=max_retries,
-        timeout=timeout,
-    )
+    options = {"base_url": base_url, "max_retries": max_retries, "timeout": timeout}
+    try:
+        # No api_key: the SDK reads the OPENAI_API_KEY environment variable
+        client = AsyncOpenAI(**options)
+    except OpenAIError:
+        # Raised only when the variable is unset: keyless server
+        return AsyncOpenAI(api_key=KEYLESS_API_KEY, **options)
+    # Set but empty (the SDK would then send no Authorization header at all),
+    # padded with whitespace or invalid: replaced, trimmed or rejected
+    api_key = clean_api_key(client.api_key)
+    if api_key != client.api_key:
+        # Shares the HTTP client (and its connections) of the original one
+        client = client.with_options(api_key=api_key)
+    return client
 
 
 class Client(io.ComfyNode):
@@ -138,13 +147,10 @@ class Client(io.ComfyNode):
             logger.warning(
                 "OpenAI API client: the base URL %s has no API path prefix (usually /v1). "
                 "This works with llama.cpp, most other servers expect .../v1", base_url)
-        # an empty variable also falls back to the placeholder: the SDK
-        # rejects an empty key
-        api_key = read_api_key()
         # One async client shared by every node connected to this one, and
         # reused across prompts while ComfyUI caches it: its connections are
         # kept alive between requests. Built and used on the API client loop
         # only (see aioloop), never on the per prompt ComfyUI one.
-        client = await aioloop.submit(_build_client(api_key, base_url, max_retries, timeout))
+        client = await aioloop.submit(_build_client(base_url, max_retries, timeout))
         aioloop.close_when_collected(client)
         return io.NodeOutput(client)
