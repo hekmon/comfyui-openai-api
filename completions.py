@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import torch
 import numpy as np
@@ -66,7 +66,40 @@ async def encode_images(images: torch.Tensor) -> list[str]:
         stop.set()
 
 
-def extract_response_content(completion: ChatCompletionResponse) -> str:
+# Extra assistant message fields holding the reasoning of reasoning models,
+# in fallback order: "reasoning_content" (llama.cpp, SGLang, LM Studio,
+# tabbyAPI, DeepSeek...) then "reasoning" (recent vLLM, Ollama, OpenRouter,
+# Groq...). Older vLLM versions send both.
+REASONING_KEYS = ("reasoning_content", "reasoning")
+
+
+def extract_reasoning(message: Any) -> dict[str, str]:
+    """The reasoning fields of a response message, under the key(s) received,
+    in REASONING_KEYS order. Only the non empty texts are kept: the history
+    mirrors them as is, and a null or empty field sent back can be rejected
+    (llama.cpp fails on a null reasoning_content)."""
+    # Not declared by the SDK models: read from the extra fields they keep
+    fields: dict[str, str] = {}
+    for key in REASONING_KEYS:
+        value = getattr(message, key, None)
+        if isinstance(value, str) and value:
+            fields[key] = value
+    return fields
+
+
+def reasoning_text(reasoning: dict[str, str]) -> str | None:
+    """The reasoning to show: the first received field in REASONING_KEYS
+    order (servers sending both send the same text twice)."""
+    return next((reasoning[key] for key in REASONING_KEYS if key in reasoning), None)
+
+
+@dataclass
+class ResponseContent:
+    content: str  # never None, empty if the API returned no text
+    reasoning: dict[str, str]  # see extract_reasoning, empty without reasoning
+
+
+def extract_response_content(completion: ChatCompletionResponse) -> ResponseContent:
     # Some backends or proxies answer with an HTTP 200 but no usable choice
     choices = getattr(completion, "choices", None)
     if not choices:
@@ -82,14 +115,34 @@ def extract_response_content(completion: ChatCompletionResponse) -> str:
         raise ValueError(f"the model refused to answer: {refusal}")
     finish_reason = getattr(choice, "finish_reason", None)
     content = getattr(message, "content", None)
+    reasoning = extract_reasoning(message)
     if content is None:
-        # e.g. a reasoning model that spent its whole token budget thinking
-        # (finish_reason "length") or a tool call answer
-        logger.warning(
-            "the API returned no text content (finish_reason: %s), "
-            "using an empty response", finish_reason)
-        return ""
-    return content
+        if reasoning:
+            # Most likely the token budget ran out before the end of the
+            # reasoning (finish_reason "length")
+            logger.warning(
+                "the API returned no text content (finish_reason: %s) but a "
+                "reasoning: the model probably spent its token budget reasoning, "
+                "raise the max tokens (max_tokens or max_completion_tokens). "
+                "Using an empty response", finish_reason)
+        else:
+            # e.g. a tool call answer
+            logger.warning(
+                "the API returned no text content (finish_reason: %s), "
+                "using an empty response", finish_reason)
+        content = ""
+    return ResponseContent(content, reasoning)
+
+
+def _assistant_message(response: ResponseContent) -> ChatCompletionMessageParam:
+    """The response as a history message. The reasoning fields are kept under
+    the key(s) received: sent back as is on the next turns, the server and its
+    chat template decide what to do with them (a server may reject the key of
+    another one, e.g. Groq and reasoning_content). The content is never None:
+    a None assistant content would be rejected on the next turn."""
+    # Extra keys, not declared by the SDK message types
+    return cast(ChatCompletionMessageParam,
+                {"role": "assistant", "content": response.content, **response.reasoning})
 
 
 def _format_token_details(details: Any, fields: list[tuple[str, str]]) -> str:
@@ -366,15 +419,14 @@ class ChatCompletion(io.ComfyNode):
             # is, only without the credentials
             scrub_exception(err, client)
             raise
-        content = extract_response_content(completion)
-        # Add the response to the history (content is never None here, a None
-        # assistant content would be rejected by the server on the next turn)
-        messages.append(
-            {
-                "role": "assistant",
-                "content": content
-            }
-        )
+        response = extract_response_content(completion)
+        # Add the response to the history, with its reasoning fields
+        messages.append(_assistant_message(response))
+        # Logged in full (no node output shows it, only the History holds it),
+        # before the usage stats
+        reasoning = reasoning_text(response.reasoning)
+        if reasoning is not None:
+            logger.info("Chat Completion: model reasoning:\n%s", reasoning)
         # Handle usage stats as text preview
         stats = format_usage(completion.usage)
         # Also logged (shown in the console at the default INFO level), after
@@ -383,7 +435,7 @@ class ChatCompletion(io.ComfyNode):
             logger.info("%s", stats)
         # Return the response and the history and the stats for the UI
         return io.NodeOutput(
-            content,
+            response.content,
             HistoryPayload(messages),
             ui=ui.PreviewText(stats or ""),
         )
