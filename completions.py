@@ -269,7 +269,7 @@ class ChatCompletion(io.ComfyNode):
                 ),
                 io.Image.Input(
                     id="images",
-                    display_name="image(s)",
+                    display_name="Image(s)",
                     optional=True,
                     tooltip="Image(s) to include in the request",
                 ),
