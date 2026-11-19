@@ -10,6 +10,8 @@ Thanks to its simplicity the project has a low footprint: it only has 1 external
 - `numpy` for computation but it is already a dependency of ComfyUI
 - `Pillow` also already used by ComfyUI for image processing
 
+> **This README documents the `main` branch, which is ahead of the latest release.** Some features described here are not in the version served by the Comfy Registry until the next tagged release: install from `main` to use them now (see [Installation](#installation)).
+
 ## Usage
 
 The default `base_url` parameter value targets the official OpenAI API endpoint by default but by changing it, you can also use this project with any OpenAI API compatible servers like Ollama, vLLM, SGLang, etc...
@@ -134,6 +136,8 @@ Requires ComfyUI 0.10.0 or later.
 ### ComfyUI Manager
 
 Search for `OpenAI API` in the `Custom Nodes Manager` and install it. Its page on the Comfy registry: [registry.comfy.org/nodes/openai-api](https://registry.comfy.org/nodes/openai-api).
+
+The registry only serves tagged releases: to try the features documented here before the next release, install from the `main` branch instead (see [Manually](#manually)).
 
 ### Manually
 
