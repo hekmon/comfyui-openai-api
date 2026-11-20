@@ -447,6 +447,14 @@ class ChatCompletion(io.ComfyNode):
                     advanced=True,
                     tooltip="Send the reasoning of the previous answers in the history (reasoning_content, reasoning or reasoning_details field with encrypted blocks from relays such as OpenRouter, as received) back to the server. Whether the model uses it is up to the server and its chat template; some keep it in the context, which grows it. Disable to send the history without it: the History output keeps it either way.",
                 ),
+                io.Boolean.Input(
+                    id="show_reasoning",
+                    display_name="Show Reasoning",
+                    optional=True,
+                    default=False,
+                    advanced=True,
+                    tooltip="Print the reasoning of the answer in the ComfyUI console (and the number of its encrypted blocks, never their content). Off by default: a long reasoning floods the console. The History output keeps it either way.",
+                ),
             ],
             outputs=[
                 io.String.Output(
@@ -492,6 +500,7 @@ class ChatCompletion(io.ComfyNode):
                       images: torch.Tensor | None = None,
                       force_regen: bool = False,
                       send_reasoning: bool | None = True,
+                      show_reasoning: bool | None = False,
                 ) -> io.NodeOutput:
         # Linked inputs are not checked by validate_inputs (None there)
         if not isinstance(prompt, str) or prompt == "":
@@ -507,6 +516,7 @@ class ChatCompletion(io.ComfyNode):
         check_options(options, "Chat Completion")
         check_client(client, "Chat Completion")
         check_input(send_reasoning, bool, "Send Reasoning", "a boolean", "Chat Completion")
+        check_input(show_reasoning, bool, "Show Reasoning", "a boolean", "Chat Completion")
         request_options = _split_options(options)
         # Never send both token limits at once. Checked before encoding the
         # images, which can take a while.
@@ -546,15 +556,18 @@ class ChatCompletion(io.ComfyNode):
         response = extract_response_content(completion)
         # Add the response to the history, with its reasoning fields
         messages.append(_assistant_message(response))
-        # Logged in full (no node output shows it, only the History holds it),
-        # before the usage stats
-        reasoning = reasoning_text(response.reasoning)
-        if reasoning is not None:
-            logger.info("Chat Completion: model reasoning:\n%s", reasoning)
-        encrypted_blocks, encrypted_size = encrypted_reasoning(response.reasoning)
-        if encrypted_blocks:
-            logger.info("Chat Completion: %d encrypted reasoning block(s) (%d characters) "
-                        "kept in the history", encrypted_blocks, encrypted_size)
+        # Only on demand, a long reasoning floods the console (None: a linked
+        # value with nothing stored, the default applies). Logged in full (no
+        # node output shows it, only the History holds it), before the usage
+        # stats.
+        if show_reasoning:
+            reasoning = reasoning_text(response.reasoning)
+            if reasoning is not None:
+                logger.info("Chat Completion: model reasoning:\n%s", reasoning)
+            encrypted_blocks, encrypted_size = encrypted_reasoning(response.reasoning)
+            if encrypted_blocks:
+                logger.info("Chat Completion: %d encrypted reasoning block(s) (%d characters) "
+                            "kept in the history", encrypted_blocks, encrypted_size)
         # Handle usage stats as text preview
         stats = format_usage(completion.usage, getattr(completion, "timings", None))
         # Also logged (shown in the console at the default INFO level), after
