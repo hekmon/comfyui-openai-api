@@ -20,7 +20,7 @@ def _option_schema(node_id: str, display_name: str, description: str, value: io.
                 id="other_options",
                 display_name="Options",
                 optional=True,
-                tooltip="Others options to merge with",
+                tooltip="Other options to merge with",
             ),
         ],
         outputs=[
@@ -64,7 +64,7 @@ class OptionSeed(_SetOption):
         return _option_schema(
             node_id="OAIAPI_Seed",
             display_name="OpenAI API - Seed",
-            description="Sets the seed for reproducible results in OpenAI API requests. Repeated requests with the same seed and parameters will return the same result, allowing for consistent randomness control.",
+            description="Sets the seed of the sampling, for more reproducible results: repeated requests with the same seed and parameters should return the same result, as far as the server and the model support it (best effort, not guaranteed). Set the control after generate to fixed to keep it, a new seed on every run also means a new request.",
             value=io.Int.Input(
                 id="seed",
                 display_name="Seed",
@@ -226,7 +226,7 @@ class OptionDeveloperRole(_SetOption):
         return _option_schema(
             node_id="OAIAPI_DeveloperRole",
             display_name="OpenAI API - Developer Role",
-            description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Use this node to adapt the generation with the new 'developer' role.",
+            description="With o1 models and newer, OpenAI has changed the 'system' prompt role to 'developer' prompt role. Set the Instructions Role of this node to developer to send the system prompt (and the history one) with that role; set to system, it converts a developer message of the history back to system.",
             value=io.Boolean.Input(
                 id="instructions_role",
                 display_name="Instructions Role",

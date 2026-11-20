@@ -433,7 +433,7 @@ class ChatCompletion(io.ComfyNode):
             node_id="OAIAPI_ChatCompletion",
             display_name="OpenAI API - Chat Completion",
             category="OpenAI API",
-            description="Generates text responses using OpenAI's chat completion API. Be sure to indicate a Vision Language Model if you are using an image input.",
+            description="Generates text responses with any OpenAI compatible chat completions API. Be sure to indicate a Vision Language Model if you are using an image input.",
             inputs=[
                 ParamClient.Input(
                     id="client",
@@ -501,7 +501,7 @@ class ChatCompletion(io.ComfyNode):
                     optional=True,
                     default=False,
                     advanced=True,
-                    tooltip="Print the reasoning of the answer in the ComfyUI console (and the number of its encrypted blocks, never their content). Off by default: a long reasoning floods the console. The History output keeps it either way.",
+                    tooltip="Print the reasoning of the answer in the ComfyUI console (and the number of its encrypted blocks, never their content). Off by default: a long reasoning floods the console. The History output keeps it either way. Changing it sends a new request, as for any other widget: enable it before running.",
                 ),
             ],
             outputs=[
