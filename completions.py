@@ -71,32 +71,66 @@ async def encode_images(images: torch.Tensor) -> list[str]:
 # tabbyAPI, DeepSeek...) then "reasoning" (recent vLLM, Ollama, OpenRouter,
 # Groq...). Older vLLM versions send both.
 REASONING_KEYS = ("reasoning_content", "reasoning")
+# The structured reasoning of the relays (OpenRouter, Vercel AI Gateway) for
+# the OpenAI, Anthropic and Gemini models, along with a "reasoning" text: a
+# list of text, summary and encrypted blocks (opaque, tied to the provider
+# and model that made them), to send back unmodified and in order. The
+# OpenAI API itself returns no reasoning on chat completions.
+REASONING_DETAILS_KEY = "reasoning_details"
+# Every reasoning field kept in the history (see Send Reasoning)
+HISTORY_REASONING_KEYS = (*REASONING_KEYS, REASONING_DETAILS_KEY)
 
 
-def extract_reasoning(message: Any) -> dict[str, str]:
+def extract_reasoning(message: Any) -> dict[str, Any]:
     """The reasoning fields of a response message, under the key(s) received,
-    in REASONING_KEYS order. Only the non empty texts are kept: the history
-    mirrors them as is, and a null or empty field sent back can be rejected
-    (llama.cpp fails on a null reasoning_content)."""
+    in HISTORY_REASONING_KEYS order. Only the non empty texts (and non empty
+    reasoning_details lists, kept as is) are kept: the history mirrors them,
+    and a null or empty field sent back can be rejected (llama.cpp fails on a
+    null reasoning_content)."""
     # Not declared by the SDK models: read from the extra fields they keep
-    fields: dict[str, str] = {}
+    fields: dict[str, Any] = {}
     for key in REASONING_KEYS:
         value = getattr(message, key, None)
         if isinstance(value, str) and value:
             fields[key] = value
+    details = getattr(message, REASONING_DETAILS_KEY, None)
+    if isinstance(details, list) and details:
+        fields[REASONING_DETAILS_KEY] = details
     return fields
 
 
-def reasoning_text(reasoning: dict[str, str]) -> str | None:
-    """The reasoning to show: the first received field in REASONING_KEYS
-    order (servers sending both send the same text twice)."""
-    return next((reasoning[key] for key in REASONING_KEYS if key in reasoning), None)
+def _detail_blocks(reasoning: dict[str, Any]) -> list[dict[str, Any]]:
+    return [b for b in reasoning.get(REASONING_DETAILS_KEY, []) if isinstance(b, dict)]
+
+
+def reasoning_text(reasoning: dict[str, Any]) -> str | None:
+    """The reasoning to show: the first received text field in REASONING_KEYS
+    order (servers sending both send the same text twice), else the text and
+    summary blocks of reasoning_details."""
+    text = next((reasoning[key] for key in REASONING_KEYS if key in reasoning), None)
+    if text is not None:
+        return text
+    parts = []
+    for block in _detail_blocks(reasoning):
+        value = block.get("text") if block.get("type") == "reasoning.text" else (
+            block.get("summary") if block.get("type") == "reasoning.summary" else None)
+        if isinstance(value, str) and value:
+            parts.append(value)
+    return "\n\n".join(parts) or None
+
+
+def encrypted_reasoning(reasoning: dict[str, Any]) -> tuple[int, int]:
+    """The number of encrypted reasoning blocks and their total size in
+    characters: only these are shown, never their content."""
+    sizes = [len(str(b.get("data") or "")) for b in _detail_blocks(reasoning)
+             if b.get("type") == "reasoning.encrypted"]
+    return len(sizes), sum(sizes)
 
 
 @dataclass
 class ResponseContent:
     content: str  # never None, empty if the API returned no text
-    reasoning: dict[str, str]  # see extract_reasoning, empty without reasoning
+    reasoning: dict[str, Any]  # see extract_reasoning, empty without reasoning
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> ResponseContent:
@@ -326,8 +360,8 @@ def _without_reasoning(messages: list[ChatCompletionMessageParam]) -> list[ChatC
     messages that have some, the history ones are shared with the (cached)
     upstream node output and must not be mutated."""
     return [
-        cast(ChatCompletionMessageParam, {k: v for k, v in msg.items() if k not in REASONING_KEYS})
-        if any(key in msg for key in REASONING_KEYS) else msg
+        cast(ChatCompletionMessageParam, {k: v for k, v in msg.items() if k not in HISTORY_REASONING_KEYS})
+        if any(key in msg for key in HISTORY_REASONING_KEYS) else msg
         for msg in messages
     ]
 
@@ -411,7 +445,7 @@ class ChatCompletion(io.ComfyNode):
                     optional=True,
                     default=True,
                     advanced=True,
-                    tooltip="Send the reasoning of the previous answers in the history (reasoning_content or reasoning field, as received) back to the server. Whether the model uses it is up to the server and its chat template; some keep it in the context, which grows it. Disable to send the history without it: the History output keeps it either way.",
+                    tooltip="Send the reasoning of the previous answers in the history (reasoning_content, reasoning or reasoning_details field with encrypted blocks from relays such as OpenRouter, as received) back to the server. Whether the model uses it is up to the server and its chat template; some keep it in the context, which grows it. Disable to send the history without it: the History output keeps it either way.",
                 ),
             ],
             outputs=[
@@ -517,6 +551,10 @@ class ChatCompletion(io.ComfyNode):
         reasoning = reasoning_text(response.reasoning)
         if reasoning is not None:
             logger.info("Chat Completion: model reasoning:\n%s", reasoning)
+        encrypted_blocks, encrypted_size = encrypted_reasoning(response.reasoning)
+        if encrypted_blocks:
+            logger.info("Chat Completion: %d encrypted reasoning block(s) (%d characters) "
+                        "kept in the history", encrypted_blocks, encrypted_size)
         # Handle usage stats as text preview
         stats = format_usage(completion.usage, getattr(completion, "timings", None))
         # Also logged (shown in the console at the default INFO level), after
