@@ -127,10 +127,39 @@ def encrypted_reasoning(reasoning: dict[str, Any]) -> tuple[int, int]:
     return len(sizes), sum(sizes)
 
 
+# Content part types of the responses sent as a list of parts (Mistral
+# reasoning models): the answer text, and the thinking, itself a list of text
+# parts (or a text)
+TEXT_PART = "text"
+THINKING_PART = "thinking"
+
+
+def _parts_text(parts: Any) -> str:
+    """The text of a list of text parts (or a text), the other parts skipped."""
+    if isinstance(parts, str):
+        return parts
+    if not isinstance(parts, list):
+        return ""
+    return "".join(p["text"] for p in parts
+                   if isinstance(p, dict) and p.get("type") == TEXT_PART and isinstance(p.get("text"), str))
+
+
+def _thinking_text(content: list[Any]) -> str:
+    """The thinking parts text of a list content."""
+    return "\n\n".join(text for p in content
+                        if isinstance(p, dict) and p.get("type") == THINKING_PART
+                        and (text := _parts_text(p.get(THINKING_PART))))
+
+
 @dataclass
 class ResponseContent:
     content: str  # never None, empty if the API returned no text
     reasoning: dict[str, Any]  # see extract_reasoning, empty without reasoning
+    # The content as received when it is a list of parts (thinking and text
+    # parts of Mistral reasoning models), kept as is in the history: content
+    # holds its text parts, thinking its thinking parts
+    parts: list[Any] | None = None
+    thinking: str = ""
 
 
 def extract_response_content(completion: ChatCompletionResponse) -> ResponseContent:
@@ -150,8 +179,16 @@ def extract_response_content(completion: ChatCompletionResponse) -> ResponseCont
     finish_reason = getattr(choice, "finish_reason", None)
     content = getattr(message, "content", None)
     reasoning = extract_reasoning(message)
+    # A list of parts (not validated by the SDK): the answer is its text parts
+    parts = content if isinstance(content, list) else None
+    thinking = ""
+    if parts is not None:
+        thinking = _thinking_text(parts)
+        content = _parts_text(parts) or None
+    elif content is not None and not isinstance(content, str):
+        raise ValueError(f"the API returned a content that is not a text ({type(content).__name__})")
     if content is None:
-        if reasoning:
+        if reasoning or thinking:
             # Most likely the token budget ran out before the end of the
             # reasoning (finish_reason "length")
             logger.warning(
@@ -165,7 +202,7 @@ def extract_response_content(completion: ChatCompletionResponse) -> ResponseCont
                 "Chat Completion: the API returned no text content (finish_reason: %s), "
                 "using an empty response", finish_reason)
         content = ""
-    return ResponseContent(content, reasoning)
+    return ResponseContent(content, reasoning, parts, thinking)
 
 
 def _assistant_message(response: ResponseContent) -> ChatCompletionMessageParam:
@@ -175,8 +212,9 @@ def _assistant_message(response: ResponseContent) -> ChatCompletionMessageParam:
     another one, e.g. Groq and reasoning_content). The content is never None:
     a None assistant content would be rejected on the next turn."""
     # Extra keys, not declared by the SDK message types
+    content = response.parts if response.parts is not None else response.content
     return cast(ChatCompletionMessageParam,
-                {"role": "assistant", "content": response.content, **response.reasoning})
+                {"role": "assistant", "content": content, **response.reasoning})
 
 
 def _format_token_count(value: Any) -> str:
@@ -358,12 +396,22 @@ def _without_reasoning(messages: list[ChatCompletionMessageParam]) -> list[ChatC
     """The messages without their reasoning fields (see extract_reasoning),
     for the request only: the History output keeps them. New dicts for the
     messages that have some, the history ones are shared with the (cached)
-    upstream node output and must not be mutated."""
-    return [
-        cast(ChatCompletionMessageParam, {k: v for k, v in msg.items() if k not in HISTORY_REASONING_KEYS})
-        if any(key in msg for key in HISTORY_REASONING_KEYS) else msg
-        for msg in messages
-    ]
+    upstream node output and must not be mutated. The thinking parts of the
+    assistant list contents (see ResponseContent) are removed too."""
+    stripped: list[ChatCompletionMessageParam] = []
+    for msg in messages:
+        content = msg.get("content")
+        has_thinking = msg.get("role") == "assistant" and isinstance(content, list) and any(
+            isinstance(p, dict) and p.get("type") == THINKING_PART for p in content)
+        if not has_thinking and not any(key in msg for key in HISTORY_REASONING_KEYS):
+            stripped.append(msg)
+            continue
+        new_msg = {k: v for k, v in msg.items() if k not in HISTORY_REASONING_KEYS}
+        if has_thinking:
+            new_msg["content"] = [p for p in cast(list[Any], content)
+                                  if not (isinstance(p, dict) and p.get("type") == THINKING_PART)]
+        stripped.append(cast(ChatCompletionMessageParam, new_msg))
+    return stripped
 
 
 def _user_message(prompt: str, image_urls: list[str] | None) -> ChatCompletionMessageParam:
@@ -561,7 +609,7 @@ class ChatCompletion(io.ComfyNode):
         # node output shows it, only the History holds it), before the usage
         # stats.
         if show_reasoning:
-            reasoning = reasoning_text(response.reasoning)
+            reasoning = reasoning_text(response.reasoning) or response.thinking or None
             if reasoning is not None:
                 logger.info("Chat Completion: model reasoning:\n%s", reasoning)
             encrypted_blocks, encrypted_size = encrypted_reasoning(response.reasoning)
