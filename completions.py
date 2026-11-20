@@ -208,6 +208,18 @@ def format_usage(usage: CompletionUsage | None, timings: Any = None) -> str | No
     # not report its cache (vLLM and SGLang need a flag for it)
     if cache_read is not None:
         prompt_parts.append(f"cache read: {cache_read}")
+    # The rest of the prompt, processed by the server, only when it reports
+    # its cache: the DeepSeek counter, else computed. The cache writes are
+    # processed tokens too, part of it. Never negative: the counters of some
+    # providers are rounded or overlap.
+    prompt_tokens = getattr(usage, "prompt_tokens", None)
+    uncached = _first_count(usage, (("prompt_cache_miss_tokens",),))
+    if (uncached is None and cache_read is not None and isinstance(prompt_tokens, int)
+            and not isinstance(prompt_tokens, bool)):
+        uncached = max(prompt_tokens - cache_read, 0)
+    if uncached is not None:
+        prompt_parts.append(f"uncached: {uncached}")
+    # After uncached, which includes it: what the server stored of it
     if cache_write:
         prompt_parts.append(f"cache write: {cache_write}")
     audio = _first_count(usage, (("prompt_tokens_details", "audio_tokens"),))
