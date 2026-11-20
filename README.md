@@ -8,7 +8,7 @@ ComfyUI nodes to use language models and vision language models in your workflow
 - **Text and images**: send a batch of images along with the prompt to a vision model.
 - **Conversations**: chain the history from node to node, or carry it across queued runs with the memory nodes to build [looping workflows](#looping-workflows).
 - **Reasoning (thinking) models**: their reasoning is kept in the history and, optionally, sent back to the server on the next turns, for models that reuse their past thinking. It can also be printed in the console.
-- **Responsive**: `Cancel` stops a running request at once instead of waiting for the full answer, and independent requests run in parallel.
+- **Responsive**: the ComfyUI `Cancel` button stops a running request at once instead of waiting for the full answer, and independent requests run in parallel.
 - **Local servers friendly**: [unload the model](#unload-model) to free VRAM before an image generation, keep long conversations [bounded](#trim-history), see the [prompt cache](#prompt-cache-and-usage-stats) usage.
 
 It is [KISS](https://en.wikipedia.org/wiki/KISS_principle) by design, for those who want these basics without importing a massive project like [LLM party](https://github.com/heshengtao/comfyui_LLM_party): the chat completions endpoint (plus the native unload routes of a few local servers) should be enough for 99% of use cases.
@@ -26,7 +26,7 @@ This pack is only the client: you need an OpenAI compatible **server**, either a
    - `Prompt`: your question.
 6. **Show the answer**: drag from the `Response` output, pick the core **Preview Any** node, then click *Run*.
 
-Running again with the same inputs gives the same answer without calling the server: ComfyUI cached it. Enable `Force Regen` to get a new one on every run.
+Running again with the same inputs gives the same answer without calling the server: ComfyUI cached it. Enable `Force Regen` to get a new one on every run, or feed the history of the previous run back with Load Memory to continue the conversation (see [Looping workflows](#looping-workflows)).
 
 ### Examples
 
@@ -198,7 +198,7 @@ Asks a local inference server to unload its model, e.g. to free VRAM before an i
 
 vLLM (sleep mode) and SGLang (memory release) are not supported: after their unload call, the next request waits or fails until an explicit wake up call, which would break the next generation.
 
-This node comes from the idea and the unload helper of [PR #11](https://github.com/hekmon/comfyui-openai-api/pull/11) by nikich340.
+This node comes from the idea and the unload helper of [PR #11](https://github.com/hekmon/comfyui-openai-api/pull/11) by @nikich340.
 
 ## Guides
 
