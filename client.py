@@ -6,7 +6,7 @@ from comfy_api.latest import io
 from . import aioloop
 from .logs import get_logger
 from .apierrors import KEYLESS_API_KEY, has_no_api_prefix
-from .iotypes import ParamClient
+from .iotypes import ParamClient, check_input
 
 # API keys must never travel through widget inputs: ComfyUI serializes every
 # widget value (even from bypassed nodes) into the `prompt` and `workflow`
@@ -137,6 +137,12 @@ class Client(io.ComfyNode):
             raise ValueError(
                 "Client: the Base URL is empty (or not a text). If it comes from a "
                 "Load Memory node, connect its Default input for the first run.")
+        # Pasted with a trailing newline or space: the SDK would send it as
+        # %20 in the URL (a 404) or as a relative URL (a connection error)
+        base_url = base_url.strip()
+        # Linked numbers: a None timeout would mean no timeout at all
+        check_input(max_retries, int, "Max Retries", "a whole number", "Client", optional=False)
+        check_input(timeout, (int, float), "Timeout", "a number", "Client", optional=False)
         error = check_base_url(base_url)
         if error is not None:
             raise ValueError(f"Client: {error}")

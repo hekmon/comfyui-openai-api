@@ -38,11 +38,15 @@ class OptionsPayload:
         return json.dumps(self.options, indent=4)
 
 
-def check_input(value: Any, expected: type, input_name: str, what: str, node: str, optional: bool = True) -> None:
+def check_input(value: Any, expected: type | tuple[type, ...], input_name: str, what: str, node: str,
+                optional: bool = True) -> None:
     """An input linked to a Load Memory node (an AnyType output) can receive
     any value: the key may hold something else than what the input expects.
     Fails with a clear message instead of an error deep inside the node."""
-    if (value is None and optional) or isinstance(value, expected):
+    expected_types = expected if isinstance(expected, tuple) else (expected,)
+    # A bool is an int for isinstance, never a number for these inputs
+    is_bool_for_number = isinstance(value, bool) and bool not in expected_types
+    if (value is None and optional) or (isinstance(value, expected_types) and not is_bool_for_number):
         return
     received = type(value).__name__
     article = "an" if received[:1].lower() in "aeiou" else "a"

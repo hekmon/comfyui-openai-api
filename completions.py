@@ -565,6 +565,7 @@ class ChatCompletion(io.ComfyNode):
         check_client(client, "Chat Completion")
         check_input(send_back_reasoning, bool, "Send Back Reasoning", "a boolean", "Chat Completion")
         check_input(show_reasoning, bool, "Show Reasoning", "a boolean", "Chat Completion")
+        check_input(images, torch.Tensor, "Image(s)", "images", "Chat Completion")
         request_options = _split_options(options)
         # Never send both token limits at once. Checked before encoding the
         # images, which can take a while.

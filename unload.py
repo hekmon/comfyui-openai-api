@@ -211,8 +211,13 @@ class UnloadModel(io.ComfyNode):
                       timeout: float,
                       fail_on_error: bool,
                 ) -> io.NodeOutput:
+        # Checked first: it decides how the other errors are reported (None:
+        # a linked value with nothing stored, the default applies)
+        check_input(fail_on_error, bool, "Fail On Error", "a boolean", "Unload Model")
         try:
             check_client(client, "Unload Model")
+            # A None timeout would mean no timeout at all
+            check_input(timeout, (int, float), "Timeout", "a number", "Unload Model", optional=False)
             # A linked model can be None (nothing stored): no model, which
             # tabbyAPI does not need
             check_input(model, str, "Model", "a text", "Unload Model")
