@@ -1,7 +1,9 @@
 [project]
 name = "openai-api"
 description = "Call LLMs and VLMs from ComfyUI with any OpenAI compatible chat completions API: local servers (llama.cpp, vLLM, SGLang, Ollama, LM Studio, tabbyAPI, Unsloth Studio...) or cloud providers. Text and image inputs, multi-turn history with memory loops, and model unloading for local servers."
-version = "3.4.0"
+# main carries unreleased features: an explicit dev version keeps it distinct
+# from the 3.4.0 published on the Comfy Registry
+version = "3.5.0-dev"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 # Numpy and Pillow same as ComfyUI
