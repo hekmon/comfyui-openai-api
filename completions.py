@@ -77,7 +77,7 @@ REASONING_KEYS = ("reasoning_content", "reasoning")
 # and model that made them), to send back unmodified and in order. The
 # OpenAI API itself returns no reasoning on chat completions.
 REASONING_DETAILS_KEY = "reasoning_details"
-# Every reasoning field kept in the history (see Send Reasoning)
+# Every reasoning field kept in the history (see Send Back Reasoning)
 HISTORY_REASONING_KEYS = (*REASONING_KEYS, REASONING_DETAILS_KEY)
 
 
@@ -440,8 +440,8 @@ class ChatCompletion(io.ComfyNode):
                 # Optional: API format prompts saved before this input existed
                 # have no value for it
                 io.Boolean.Input(
-                    id="send_reasoning",
-                    display_name="Send Reasoning",
+                    id="send_back_reasoning",
+                    display_name="Send Back Reasoning",
                     optional=True,
                     default=True,
                     advanced=True,
@@ -499,7 +499,7 @@ class ChatCompletion(io.ComfyNode):
                       options: OptionsPayload | None = None,
                       images: torch.Tensor | None = None,
                       force_regen: bool = False,
-                      send_reasoning: bool | None = True,
+                      send_back_reasoning: bool | None = True,
                       show_reasoning: bool | None = False,
                 ) -> io.NodeOutput:
         # Linked inputs are not checked by validate_inputs (None there)
@@ -515,7 +515,7 @@ class ChatCompletion(io.ComfyNode):
         check_history(history, "Chat Completion")
         check_options(options, "Chat Completion")
         check_client(client, "Chat Completion")
-        check_input(send_reasoning, bool, "Send Reasoning", "a boolean", "Chat Completion")
+        check_input(send_back_reasoning, bool, "Send Back Reasoning", "a boolean", "Chat Completion")
         check_input(show_reasoning, bool, "Show Reasoning", "a boolean", "Chat Completion")
         request_options = _split_options(options)
         # Never send both token limits at once. Checked before encoding the
@@ -532,7 +532,7 @@ class ChatCompletion(io.ComfyNode):
         request_kwargs: dict[str, Any] = {
             "model": model,
             # None: a linked value with nothing stored, the default applies
-            "messages": messages if send_reasoning is not False else _without_reasoning(messages),
+            "messages": messages if send_back_reasoning is not False else _without_reasoning(messages),
             "n": 1,
             **request_options.fields,
         }
