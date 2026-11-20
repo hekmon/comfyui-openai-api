@@ -145,17 +145,6 @@ def _assistant_message(response: ResponseContent) -> ChatCompletionMessageParam:
                 {"role": "assistant", "content": response.content, **response.reasoning})
 
 
-def _format_token_details(details: Any, fields: list[tuple[str, str]]) -> str:
-    # Only list the strictly positive counters, and only add the parentheses
-    # if there is at least one of them
-    parts = []
-    for attr, label in fields:
-        value = getattr(details, attr, None)
-        if isinstance(value, int) and value > 0:
-            parts.append(f"{label}: {value}")
-    return f" ({', '.join(parts)})" if parts else ""
-
-
 def _format_token_count(value: Any) -> str:
     return str(value) if value is not None else "n/a"
 
@@ -226,16 +215,27 @@ def format_usage(usage: CompletionUsage | None, timings: Any = None) -> str | No
         prompt_parts.append(f"audio: {audio}")
     if prompt_parts:
         text += f" ({', '.join(prompt_parts)})"
-    text += "\nCompletions tokens: " + _format_token_count(getattr(usage, "completion_tokens", None))
-    text += _format_token_details(
-        getattr(usage, "completion_tokens_details", None),
-        [
-            ("audio_tokens", "audio"),
-            ("reasoning_tokens", "reasoning"),
-            ("accepted_prediction_tokens", "prediction accepted"),
-            ("rejected_prediction_tokens", "prediction rejected"),
-        ],
-    )
+    completion_tokens = getattr(usage, "completion_tokens", None)
+    text += "\nCompletions tokens: " + _format_token_count(completion_tokens)
+    details = getattr(usage, "completion_tokens_details", None)
+    completion_parts = []
+    reasoning = _first_count(details, (("reasoning_tokens",),))
+    audio = _first_count(details, (("audio_tokens",),))
+    if reasoning:
+        completion_parts.append(f"reasoning: {reasoning}")
+        # The rest of the completion: the answer itself, so that nobody has
+        # to subtract (audio tokens are part of the completion too)
+        if isinstance(completion_tokens, int) and not isinstance(completion_tokens, bool):
+            completion_parts.append(f"content: {max(completion_tokens - reasoning - (audio or 0), 0)}")
+    if audio:
+        completion_parts.append(f"audio: {audio}")
+    for attr, label in (("accepted_prediction_tokens", "prediction accepted"),
+                        ("rejected_prediction_tokens", "prediction rejected")):
+        value = _first_count(details, ((attr,),))
+        if value:
+            completion_parts.append(f"{label}: {value}")
+    if completion_parts:
+        text += f" ({', '.join(completion_parts)})"
     return text
 
 
