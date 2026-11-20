@@ -1,9 +1,7 @@
 [project]
 name = "openai-api"
 description = "Call LLMs and VLMs from ComfyUI with any OpenAI compatible chat completions API: local servers (llama.cpp, vLLM, SGLang, Ollama, LM Studio, tabbyAPI, Unsloth Studio...) or cloud providers. Text and image inputs, multi-turn history with memory loops, and model unloading for local servers."
-# main carries unreleased features: an explicit dev version keeps it distinct
-# from the 3.3.0 published on the Comfy Registry
-version = "3.4.0-dev"
+version = "3.4.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 # Numpy and Pillow same as ComfyUI
@@ -19,8 +17,8 @@ Repository = "https://github.com/hekmon/comfyui-openai-api"
 [tool.comfy]
 PublisherId = "hekmon"
 DisplayName = "OpenAI API"
-Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.3.0/res/logo.png"
-Banner = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.3.0/res/banner.png"
+Icon = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.4.0/res/logo.png"
+Banner = "https://media.githubusercontent.com/media/hekmon/comfyui-openai-api/refs/tags/v3.4.0/res/banner.png"
 # First ComfyUI release with the advanced node inputs (advanced=True, shown
 # under "Show advanced inputs")
 requires-comfyui = ">=0.10.0"
