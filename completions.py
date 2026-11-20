@@ -1,7 +1,6 @@
 import asyncio
 import base64
 from io import BytesIO
-import logging
 import threading
 import time
 from dataclasses import dataclass
@@ -20,13 +19,14 @@ from openai.types.chat.chat_completion_content_part_param import ChatCompletionC
 from comfy_api.latest import io, ui
 
 from . import aioloop
+from .logs import get_logger
 from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
 from .iotypes import (DEVELOPER_ROLE_KEY, INSTRUCTIONS_ROLES, ParamClient, ParamHistory, ParamOptions, HistoryPayload, OptionsPayload,
                       check_client, check_history, check_input, check_options)
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
@@ -121,14 +121,14 @@ def extract_response_content(completion: ChatCompletionResponse) -> ResponseCont
             # Most likely the token budget ran out before the end of the
             # reasoning (finish_reason "length")
             logger.warning(
-                "the API returned no text content (finish_reason: %s) but a "
+                "Chat Completion: the API returned no text content (finish_reason: %s) but a "
                 "reasoning: the model probably spent its token budget reasoning, "
                 "raise the max tokens (max_tokens or max_completion_tokens). "
                 "Using an empty response", finish_reason)
         else:
             # e.g. a tool call answer
             logger.warning(
-                "the API returned no text content (finish_reason: %s), "
+                "Chat Completion: the API returned no text content (finish_reason: %s), "
                 "using an empty response", finish_reason)
         content = ""
     return ResponseContent(content, reasoning)
@@ -432,7 +432,8 @@ class ChatCompletion(io.ComfyNode):
         # Also logged (shown in the console at the default INFO level), after
         # the log line of the HTTP request
         if stats:
-            logger.info("%s", stats)
+            # On one line, easier to find in a busy console
+            logger.info("Chat Completion usage: %s", stats.replace("\n", ", "))
         # Return the response and the history and the stats for the UI
         return io.NodeOutput(
             response.content,

@@ -1,14 +1,14 @@
-import logging
 from typing import Any
 
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 
 from comfy_api.latest import io
 
+from .logs import get_logger
 from .iotypes import INSTRUCTIONS_ROLES, ParamHistory, HistoryPayload, check_history, check_input
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Bounds of the Trim History widgets (-1: see the tooltips)
 _MAX_VALUE = 10000

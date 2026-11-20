@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -12,10 +11,11 @@ from comfy_api.latest import io
 from . import aioloop
 from .apierrors import describe_api_error, scrub_exception
 from .interrupt import run_interruptible
+from .logs import get_logger
 from .iotypes import ParamClient, check_client, check_input
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 @dataclass(frozen=True)
 class ServerType:
@@ -221,7 +221,7 @@ class UnloadModel(io.ComfyNode):
             if error is not None:
                 raise ValueError(f"Unload Model: {error}")
             await unload_model(client, server_type, model, timeout)
-            logger.info("%s: model %s unloaded", server_type, model or "(current)")
+            logger.info("Unload Model: %s model %s unloaded", server_type, model or "(current)")
         except comfy.model_management.InterruptProcessingException:
             # An Exception subclass in older ComfyUI versions: never turn a
             # Cancel into a warning
@@ -229,5 +229,9 @@ class UnloadModel(io.ComfyNode):
         except Exception as e:
             if fail_on_error:
                 raise
-            logger.warning("%s (value passed through anyway)", e)
+            # The input errors already name the node
+            message = str(e)
+            if not message.startswith("Unload Model:"):
+                message = f"Unload Model: {message}"
+            logger.warning("%s (value passed through anyway)", message)
         return io.NodeOutput(value)

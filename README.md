@@ -18,6 +18,8 @@ The default `base_url` parameter value targets the official OpenAI API endpoint 
 
 Multiples images are supported as long as they are fed batched to the chat completion node.
 
+The messages of this pack in the ComfyUI console (usage stats, reasoning, warnings...) start with `[openai-api]` followed by the node name, to find them among the other custom nodes ones.
+
 Rarely changed settings are advanced inputs: the Client `Max Retries` and `Timeout`, the Unload Model `Timeout` and `Fail On Error`, the Trim History `Keep Turns` and `Keep Images`. With the *Nodes 2.0* display, click *Show advanced inputs* at the bottom of the node to see them; the classic display shows them with the other widgets.
 
 ### Client node

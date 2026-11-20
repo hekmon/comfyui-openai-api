@@ -1,10 +1,10 @@
-import logging
 from urllib.parse import urlparse
 
 from openai import AsyncOpenAI, OpenAIError
 from comfy_api.latest import io
 
 from . import aioloop
+from .logs import get_logger
 from .apierrors import KEYLESS_API_KEY, has_no_api_prefix
 from .iotypes import ParamClient
 
@@ -16,7 +16,7 @@ from .iotypes import ParamClient
 # The variable is read by the OpenAI SDK itself (its documented default when no
 # api_key is given): this module only checks what the SDK picked up.
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Base URLs already warned about, to log the missing prefix warning only once
 _warned_base_urls: set[str] = set()
@@ -145,7 +145,7 @@ class Client(io.ComfyNode):
         if has_no_api_prefix(base_url) and base_url not in _warned_base_urls:
             _warned_base_urls.add(base_url)
             logger.warning(
-                "OpenAI API client: the base URL %s has no API path prefix (usually /v1). "
+                "Client: the base URL %s has no API path prefix (usually /v1). "
                 "This works with llama.cpp, most other servers expect .../v1", base_url)
         # One async client shared by every node connected to this one, and
         # reused across prompts while ComfyUI caches it: its connections are
