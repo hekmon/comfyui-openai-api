@@ -160,19 +160,72 @@ def _format_token_count(value: Any) -> str:
     return str(value) if value is not None else "n/a"
 
 
-def format_usage(usage: CompletionUsage | None) -> str | None:
+def _field(obj: Any, path: tuple[str, ...]) -> Any:
+    # Undeclared fields are kept by the SDK models (as attributes) and nested
+    # undeclared objects arrive as plain dicts
+    for name in path:
+        obj = obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
+        if obj is None:
+            return None
+    return obj
+
+
+def _first_count(obj: Any, paths: tuple[tuple[str, ...], ...]) -> int | None:
+    """The first token counter found in paths, None if none is reported.
+    Servers sending several of them send the same number twice: never added."""
+    for path in paths:
+        value = _field(obj, path)
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return value
+    return None
+
+
+# Prompt cache reads, in fallback order: the OpenAI field (OpenAI, llama.cpp,
+# vLLM and SGLang with their cache report flag, Ollama, tabbyAPI, Unsloth
+# Studio, OpenRouter...), DeepSeek, Anthropic style proxies (e.g. LiteLLM),
+# older Kimi and Together
+_CACHE_READ_FIELDS = (
+    ("prompt_tokens_details", "cached_tokens"),
+    ("prompt_cache_hit_tokens",),
+    ("cache_read_input_tokens",),
+    ("cached_tokens",),
+)
+# Prompt cache writes: OpenAI, OpenRouter and Kimi, vLLM (newly prefilled
+# tokens stored in its prefix cache), Anthropic style proxies
+_CACHE_WRITE_FIELDS = (
+    ("prompt_tokens_details", "cache_write_tokens"),
+    ("prompt_tokens_details", "created_cache_tokens"),
+    ("cache_creation_input_tokens",),
+)
+
+
+def format_usage(usage: CompletionUsage | None, timings: Any = None) -> str | None:
+    """The usage stats as text. timings: the llama.cpp style timings object
+    of the response, if any, whose cache_n is the only cache counter of the
+    llama.cpp builds before March 2026."""
     if usage is None:
         return None
     # Some OpenAI-compatible backends return a usage object without some of
     # these fields (even the token totals): always use getattr with a default
     text = "Prompt tokens: " + _format_token_count(getattr(usage, "prompt_tokens", None))
-    text += _format_token_details(
-        getattr(usage, "prompt_tokens_details", None),
-        [
-            ("audio_tokens", "audio"),
-            ("cached_tokens", "cached"),
-        ],
-    )
+    cache_read = _first_count(usage, _CACHE_READ_FIELDS)
+    if cache_read is None and isinstance(timings, dict):
+        # Never timings.prompt_n: the uncached tokens for llama.cpp, the
+        # whole prompt for Ollama
+        cache_read = _first_count(timings, (("cache_n",),))
+    cache_write = _first_count(usage, _CACHE_WRITE_FIELDS)
+    prompt_parts = []
+    # A reported 0 is shown: it tells a cache miss from a server that does
+    # not report its cache (vLLM and SGLang need a flag for it)
+    if cache_read is not None:
+        prompt_parts.append(f"cache read: {cache_read}")
+    if cache_write:
+        prompt_parts.append(f"cache write: {cache_write}")
+    audio = _first_count(usage, (("prompt_tokens_details", "audio_tokens"),))
+    if audio:
+        prompt_parts.append(f"audio: {audio}")
+    if prompt_parts:
+        text += f" ({', '.join(prompt_parts)})"
     text += "\nCompletions tokens: " + _format_token_count(getattr(usage, "completion_tokens", None))
     text += _format_token_details(
         getattr(usage, "completion_tokens_details", None),
@@ -453,7 +506,7 @@ class ChatCompletion(io.ComfyNode):
         if reasoning is not None:
             logger.info("Chat Completion: model reasoning:\n%s", reasoning)
         # Handle usage stats as text preview
-        stats = format_usage(completion.usage)
+        stats = format_usage(completion.usage, getattr(completion, "timings", None))
         # Also logged (shown in the console at the default INFO level), after
         # the log line of the HTTP request
         if stats:
