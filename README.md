@@ -198,7 +198,7 @@ Asks a local inference server to unload its model, e.g. to free VRAM before an i
 
 vLLM (sleep mode) and SGLang (memory release) are not supported: after their unload call, the next request waits or fails until an explicit wake up call, which would break the next generation.
 
-This node comes from the idea and the unload helper of [PR #11](https://github.com/hekmon/comfyui-openai-api/pull/11) by @nikich340.
+This node was first requested by @JaneSmith in [issue #6](https://github.com/hekmon/comfyui-openai-api/issues/6), and built from the unload helper of [PR #11](https://github.com/hekmon/comfyui-openai-api/pull/11) by @nikich340.
 
 ## Guides
 
