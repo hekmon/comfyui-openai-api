@@ -255,6 +255,18 @@ def _build_messages(history: HistoryPayload | None, system_prompt: str | None,
     return messages
 
 
+def _without_reasoning(messages: list[ChatCompletionMessageParam]) -> list[ChatCompletionMessageParam]:
+    """The messages without their reasoning fields (see extract_reasoning),
+    for the request only: the History output keeps them. New dicts for the
+    messages that have some, the history ones are shared with the (cached)
+    upstream node output and must not be mutated."""
+    return [
+        cast(ChatCompletionMessageParam, {k: v for k, v in msg.items() if k not in REASONING_KEYS})
+        if any(key in msg for key in REASONING_KEYS) else msg
+        for msg in messages
+    ]
+
+
 def _user_message(prompt: str, image_urls: list[str] | None) -> ChatCompletionMessageParam:
     if image_urls is None:
         return {"role": "user", "content": prompt}
@@ -326,6 +338,16 @@ class ChatCompletion(io.ComfyNode):
                     optional=True,
                     tooltip="Image(s) to include in the request",
                 ),
+                # Optional: API format prompts saved before this input existed
+                # have no value for it
+                io.Boolean.Input(
+                    id="send_reasoning",
+                    display_name="Send Reasoning",
+                    optional=True,
+                    default=True,
+                    advanced=True,
+                    tooltip="Send the reasoning of the previous answers in the history (reasoning_content or reasoning field, as received) back to the server. Whether the model uses it is up to the server and its chat template; some keep it in the context, which grows it. Disable to send the history without it: the History output keeps it either way.",
+                ),
             ],
             outputs=[
                 io.String.Output(
@@ -370,6 +392,7 @@ class ChatCompletion(io.ComfyNode):
                       options: OptionsPayload | None = None,
                       images: torch.Tensor | None = None,
                       force_regen: bool = False,
+                      send_reasoning: bool | None = True,
                 ) -> io.NodeOutput:
         # Linked inputs are not checked by validate_inputs (None there)
         if not isinstance(prompt, str) or prompt == "":
@@ -384,6 +407,7 @@ class ChatCompletion(io.ComfyNode):
         check_history(history, "Chat Completion")
         check_options(options, "Chat Completion")
         check_client(client, "Chat Completion")
+        check_input(send_reasoning, bool, "Send Reasoning", "a boolean", "Chat Completion")
         request_options = _split_options(options)
         # Never send both token limits at once. Checked before encoding the
         # images, which can take a while.
@@ -398,7 +422,8 @@ class ChatCompletion(io.ComfyNode):
         messages.append(_user_message(prompt, image_urls))
         request_kwargs: dict[str, Any] = {
             "model": model,
-            "messages": messages,
+            # None: a linked value with nothing stored, the default applies
+            "messages": messages if send_reasoning is not False else _without_reasoning(messages),
             "n": 1,
             **request_options.fields,
         }
