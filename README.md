@@ -54,7 +54,7 @@ Every node name starts with `OpenAI API - `, and they are all in the `OpenAI API
 | [Unload Model](#unload-model) | Asks a local server to unload its model, e.g. to free VRAM |
 
 - **Advanced inputs**: rarely changed settings, marked *advanced* below. With the *Nodes 2.0* display, click *Show advanced inputs* at the bottom of the node to see them; the classic display shows them with the other widgets.
-- **Console messages**: the log messages of this pack (usage stats, reasoning, warnings...) start with `[openai-api]` followed by the node name.
+- **Console messages**: the log messages of this pack (usage stats, reasoning, warnings, HTTP requests...) start with `[openai-api]`, followed by the node name, or by the library name in brackets for the messages of the libraries it uses (e.g. `[openai-api] [httpx] HTTP Request: ...`).
 
 ### Client
 
