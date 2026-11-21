@@ -14,17 +14,28 @@ T = TypeVar("T")
 # whole process, running in a daemon thread (it never blocks the exit).
 _lock = threading.Lock()
 _loop: asyncio.AbstractEventLoop | None = None
+_thread_id: int | None = None
 
 
 def get_loop() -> asyncio.AbstractEventLoop:
     """The API client event loop, started on first use."""
-    global _loop
+    global _loop, _thread_id
     with _lock:
         if _loop is None:
             loop = asyncio.new_event_loop()
-            threading.Thread(target=loop.run_forever, name="OpenAI API client loop", daemon=True).start()
+            thread = threading.Thread(target=loop.run_forever, name="OpenAI API client loop", daemon=True)
+            thread.start()
+            # Set before the loop is returned: nothing runs on it before
+            _thread_id = thread.ident
             _loop = loop
         return _loop
+
+
+def loop_thread_id() -> int | None:
+    """The thread identifier of the API client loop, None until it starts.
+    Every API request of this pack runs on it: what the log filter relies on
+    to tell the library log messages of this pack from the ones of others."""
+    return _thread_id
 
 
 def submit(coro: Coroutine[Any, Any, T]) -> "asyncio.Future[T]":
